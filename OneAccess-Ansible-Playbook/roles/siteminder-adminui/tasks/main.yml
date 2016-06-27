@@ -1,0 +1,51 @@
+---
+
+  - name: This module only works on CentOS 6 x86
+    assert:
+      that:
+        - "ansible_os_family == 'RedHat'"
+
+  - name: Copy the SiteMinder AdminUI files to sources_dir
+    unarchive: creates={{ sources_dir }}/ca-adminui-12.52-sp01-linux.bin src=GEN08164535E-AdminUiLinux.zip dest={{ sources_dir }}
+
+  - name: Copy the SiteMinder AdminUI PreReq files to sources_dir
+    unarchive: creates={{ sources_dir }}/adminui-pre-req-12.52-sp01-linux.bin src=GEN08163628E-PreReq.zip dest={{ sources_dir }}
+
+  - name: Fix access rights on installation files (pre-req)
+    file: path={{ sources_dir }}/adminui-pre-req-12.52-sp01-linux.bin mode=0755 state=file
+
+  - name: Fix access rights on installation files (ui)
+    file: path={{ sources_dir }}/ca-adminui-12.52-sp01-linux.bin mode=0755 state=file
+
+  - name: Copy the unattended installation response file (pre-req)
+    template: src=prereq-unattended.properties dest={{ sources_dir }}/prereq-unattended.properties
+
+  - name: Copy the unattended installation response file (ui)
+    template: src=adminui-unattended.properties dest={{ sources_dir }}/adminui-unattended.properties
+
+  - name: Run XPSRegClient
+    command: /bin/ksh -l -c 'XPSRegClient "{{ sm_admin_user }}:{{ sm_admin_password }}" -adminui-setup -vI'
+    sudo_user: "{{ sm_user }}"
+    tags: wamui-register
+
+  - name: Install AdminUI Pre-requisites (warning, no check !)
+    command: creates={{ sm_home }}/siteminder/adminui {{ sources_dir }}/adminui-pre-req-12.52-sp01-linux.bin -f {{ sources_dir }}/prereq-unattended.properties -i silent
+    sudo_user: "{{ sm_user }}"
+    ignore_errors: yes
+
+  - name: Install AdminUI (warning, no check !)
+    command: creates={{ sm_home }}/siteminder/adminui/SiteMinder {{ sources_dir }}/ca-adminui-12.52-sp01-linux.bin -f {{ sources_dir }}/adminui-unattended.properties -i silent
+    sudo_user: "{{ sm_user }}"
+    ignore_errors: yes
+
+  - name: Change the AdminUI SSL port of the built-in JBOSS
+    template: src=bindings-jboss-beans.xml dest={{ sm_home }}/siteminder/adminui/server/default/conf/bindingservice.beans/META-INF/bindings-jboss-beans.xml
+    tags: config
+
+  - name: Change the log config of the built-in JBOSS
+    template: src=jboss-log4j.xml dest={{ sm_home }}/siteminder/adminui/server/default/conf/jboss-log4j.xml
+    tags: config
+
+  - name: Flush the WAMUI Cache (do not forget to re-run XPSRegClient)
+    shell: rm -rf {{ sm_home }}/siteminder/adminui/server/default/data/derby/siteminder/*
+    tags: flushcache

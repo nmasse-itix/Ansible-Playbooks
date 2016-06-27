@@ -1,0 +1,24 @@
+---
+
+  - name: This module only works on CentOS 6 x86
+    assert:
+      that:
+        - "ansible_userspace_bits == '32'"
+        - "ansible_os_family == 'RedHat'"
+
+  - name: Unarchive the VMware Tools installation media
+    unarchive: creates={{ sources_dir }}/vmware-tools-distrib src=VMwareTools-9.6.2-1688356.tar.gz dest={{ sources_dir }}
+
+  - name: Install the VMware Tools
+    command: creates=/usr/bin/vmware-config-tools.pl {{ sources_dir }}/vmware-tools-distrib/vmware-install.pl --default
+
+  - name: Install fuse
+    yum: name=fuse-libs state=installed
+
+  - name: Patch the startup scripts
+    template: src=vmware-tools-thinprint.conf dest=/etc/init/vmware-tools-thinprint.conf
+
+# TODO : start the vmware-tools-thinprint service before ?
+
+  - name: Configure the VMware Tools
+    command: /usr/bin/vmware-config-tools.pl -d -p

@@ -1,0 +1,74 @@
+---
+
+ - name: Install TCSH
+   yum: name=tcsh state=installed
+
+ - name: Install AT
+   yum: name=at state=installed
+
+ - name: Create the CA Directory source folder
+   file: path={{ sources_dir }}/ca-directory state=directory
+
+ - name: Extract the installation materials
+   unarchive: creates={{ sources_dir }}/ca-directory/linux_x86 src=cadir-12.0sp4.tgz dest={{ sources_dir }}/ca-directory
+
+ - name: Copy the unattended response file
+   template: src=ca-dir.resp dest={{ sources_dir }}/ca-directory/responsefile.txt
+
+ - name: Install CA Directory
+   command: chdir={{ sources_dir }}/ca-directory/linux_x86/dxserver/install creates={{ dx_home }}/dxserver {{ sources_dir }}/ca-directory/linux_x86/dxserver/install/dxsetup.sh -responsefile {{ sources_dir }}/ca-directory/responsefile.txt -silent
+
+ - name: Copy missing .dxcshrc file (TODO why is it missing ?)
+   template: src=dxcshrc dest={{ dx_home }}/dxserver/install/.dxcshrc
+   sudo_user: "{{ dx_user }}"
+
+ - name: Copy missing .dxprofile file (TODO why is it missing ?)
+   template: src=dxprofile dest={{ dx_home }}/dxserver/install/.dxprofile
+   sudo_user: "{{ dx_user }}"
+
+ - name: Fix symlinks in dxserver/bin (TODO why ?)
+   file: path={{ dx_home }}/dxserver/bin/{{ item }} src={{ item }}64
+   sudo_user: "{{ dx_user }}"
+   with_items: [ "dxserver", "dxloaddb", "dxdumpdb" ]
+
+ - name: Set SSH key for dxuser
+   authorized_key: user={{ dx_user }} key="{{ ansible_ssh_public_key }}" manage_dir=yes
+   tags: user
+
+ - name: Create the ACME datastore
+   command: creates="{{ dx_home }}/dxserver/config/servers/ACMEUsers.dxi" /bin/sh -l -c "dxnewdsa ACMEUsers {{ dx_acme_dsa_port }}"
+   sudo_user: "{{ dx_user }}"
+
+ - name: Copy the LDIF file into the sources dir
+   copy: src=sample.ldif dest={{ sources_dir }}/sample.ldif
+   tags: userstore
+
+ - name: Bind ACME DSA on 127.0.0.1 only
+   lineinfile: dest="{{ dx_home }}/dxserver/config/knowledge/ACMEUsers.dxc" line='    address       = tcp "127.0.0.1" port \1' regexp='^\s*address\s*=\s*tcp\s*"[^"]*"\s*port\s*([0-9]+)' backrefs=yes
+   sudo_user: "{{ dx_user }}"
+   tags: config
+
+ - name: Bind ACME DSA on 127.0.0.1 only
+   lineinfile: dest="{{ dx_home }}/dxserver/config/knowledge/ACMEUsers.dxc" line='    bind-address  = "127.0.0.1"' insertafter="^\s*address\s*=" regexp='^\s*bind-address\s*='
+   sudo_user: "{{ dx_user }}"
+   tags: config
+
+ - name: Stop the ACME DSA
+   command: /bin/sh -l -c "dxserver stop ACMEUsers"
+   sudo_user: "{{ dx_user }}"
+   tags: userstore
+
+ - name: Load the LDIF into the ACME datastore
+   command: /bin/sh -l -c "dxloaddb ACMEUsers {{ sources_dir }}/sample.ldif"
+   sudo_user: "{{ dx_user }}"
+   tags: userstore
+
+ - name: Flag the ACME DSA as "autostart"
+   file: path={{ dx_home }}/dxserver/config/autostart/ACMEUsers state=touch
+   sudo_user: "{{ dx_user }}"
+   tags: config
+
+ - name: Start the ACME DSA
+   command: /bin/sh -l -c "dxserver start ACMEUsers"
+   sudo_user: "{{ dx_user }}"
+   tags: userstore

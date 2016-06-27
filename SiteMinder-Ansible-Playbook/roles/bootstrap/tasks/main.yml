@@ -1,0 +1,33 @@
+---
+
+ - name: Create user Demo (passwd = CAdemo123)
+   user: name=demo group=users groups=users,wheel state=present comment=Demo password=$6$KU6zqgJx$c3umutWq7QZtXELrONAxHLwkrJjkCvicTZoTglmZ8vXGDznUcyQCIUpu5eVVqfJCi4.XniA432rIX8JOTOR6J1
+   tags:
+     - bootstrap
+     - user
+
+ - name: Set SSH key for root
+   authorized_key: user=root key="{{ lookup('file', '/Users/nicolas/.ssh/id_rsa_ca.pub') }}" manage_dir=yes
+   tags:
+     - bootstrap
+     - user
+
+ - name: Set the root password (passwd = CAdemo123)
+   user: name=root password=$6$KU6zqgJx$c3umutWq7QZtXELrONAxHLwkrJjkCvicTZoTglmZ8vXGDznUcyQCIUpu5eVVqfJCi4.XniA432rIX8JOTOR6J1
+   tags:
+     - bootstrap
+     - user
+
+ - name: Set SSH key for user demo
+   authorized_key: user=demo key="{{ lookup('file', '/Users/nicolas/.ssh/id_rsa_ca.pub') }}" manage_dir=yes
+   tags:
+     - bootstrap
+     - user
+
+ - name: Install SUDO
+   yum: name=sudo state=installed
+   tags: bootstrap
+
+ - name: Configure SUDO
+   template: src=sudoers dest=/etc/sudoers owner=root group=root mode=0440 validate="/usr/sbin/visudo -cf %s"
+   tags: bootstrap

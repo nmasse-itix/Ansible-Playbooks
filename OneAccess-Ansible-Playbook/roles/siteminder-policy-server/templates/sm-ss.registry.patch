@@ -1,0 +1,20 @@
+--- sm.registry.20151021	2015-10-21 14:28:48.560915176 +0200
++++ sm.registry	2015-10-21 14:30:37.108915156 +0200
+@@ -194,12 +194,12 @@
+ Version=              	                  5.0;	REG_SZ
+
+ HKEY_LOCAL_MACHINE\SOFTWARE\Netegrity\SiteMinder\CurrentVersion\LdapSessionServer=482496606
+-AdminDN=              	                     ;	REG_SZ
+-AdminPW=              	                     ;	REG_SZ
+-Enabled=              	                    0;	REG_DWORD
++AdminDN=              	cn=DXAdmin,ou=SS,o=SiteMinder;	REG_SZ
++AdminPW=              	{RC2}ibeBaU6DvuFsFs02B9BFvn5Iyy0E57CD;	REG_SZ
++Enabled=              	                  0x1;	REG_DWORD
+ MaxConnections=       	                  0xa;	REG_DWORD
+-Server=               	                     ;	REG_SZ
+-SSRootDN=             	                     ;	REG_SZ
++Server=               	      127.0.0.1:{{ sm_session_store_port }};	REG_SZ
++SSRootDN=             	ou=SessionStore,ou=SS,o=SiteMinder;	REG_SZ
+ Use Default=          	                    0;	REG_DWORD
+ Use SSL=              	                    0;	REG_DWORD
+ Version=              	                  5.0;	REG_SZ

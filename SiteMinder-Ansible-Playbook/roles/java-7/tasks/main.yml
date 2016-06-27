@@ -1,0 +1,27 @@
+---
+
+  - name: This module only works on RHEL/CentOS
+    assert:
+      that:
+        - "ansible_os_family == 'RedHat'"
+
+  - name: Extract the Oracle JDK 7 archive
+    unarchive: creates=/opt/jdk1.7.0_55 src=jdk-7u55-linux-{{ ansible_architecture }}.tar.gz dest=/opt
+    register: java
+
+  - name: Link it to $JAVA_HOME
+    file: dest={{ java_home }} src=/opt/jdk1.7.0_55 state=link
+
+  - name: Update alternatives
+    command: /usr/sbin/update-alternatives --install /usr/bin/java java {{ java_home }}/bin/java 9999 --slave /usr/bin/keytool keytool {{ java_home }}/bin/keytool --slave /usr/bin/rmiregistry rmiregistry {{ java_home }}/bin/rmiregistry
+    when: java.changed
+
+  - name: Set JAVA_HOME
+    lineinfile: line="JAVA_HOME={{ java_home }}" state=present dest=/etc/profile.d/jdk7.sh create=yes
+
+  - name: Set /opt/jdk7 into PATH
+    lineinfile: line='PATH="{{ java_home }}/bin:$PATH"' dest=/etc/profile.d/jdk7.sh state=present
+
+  - name: Install JCE Unlimited strength policy files
+    copy: src={{ item }} dest={{ java_home }}/jre/lib/security/{{ item }}
+    with_items: [ 'local_policy.jar', 'US_export_policy.jar' ]

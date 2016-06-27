@@ -1,0 +1,6 @@
+---
+  timezone: Europe/Paris
+  ansible_python_interpreter: /usr/bin/python2
+  ansible_ssh_user: demo
+  ansible_ssh_private_key_file: /Users/nicolas/.ssh/id_rsa
+  sources_dir: /opt/sources

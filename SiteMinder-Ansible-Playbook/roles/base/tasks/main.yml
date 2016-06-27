@@ -1,0 +1,91 @@
+---
+
+  - name: Tell SSHD not to use DNS
+    lineinfile: dest=/etc/ssh/sshd_config regexp="^#* *UseDNS +" line="UseDNS no"
+    notify: restart sshd
+
+  - name: Install VIM
+    yum: name=vim-enhanced state=installed
+
+  - name: Install Screen
+    yum: name=screen state=installed
+
+  - name: Install OpenLDAP clients
+    yum: name=openldap-clients state=installed
+
+  - name: Install unzip
+    yum: name=unzip state=installed
+
+  - name: Install tcpdump
+    yum: name=tcpdump state=installed
+
+  - name: Install telnet
+    yum: name=telnet state=installed
+
+  - name: Install strace
+    yum: name=strace state=installed
+
+  - name: Install man-pages
+    yum: name=man-pages state=installed
+
+  - name: Install man
+    yum: name=man state=installed
+
+  - name: Compute short hostname
+    set_fact:
+      shortname: "{{ inventory_hostname | regex_replace('([^.]+)\\..*', '\\\\1') }}"
+
+  - name: Persist the hostname
+    lineinfile: dest=/etc/sysconfig/network regexp="^HOSTNAME=" line="HOSTNAME={{ shortname }}"
+    notify: update hostname
+
+  - name: Edit /etc/hosts
+    template: src=etc_hosts dest=/etc/hosts owner=root group=root mode=0644
+
+  - name: Ensure consistent locale across systems (1/2)
+    lineinfile: dest=/etc/sysconfig/i18n regexp="^LANG=" line="LANG=en_US.utf8"
+
+  - name: Ensure consistent locale across systems (2/2)
+    lineinfile: dest=/etc/sysconfig/i18n line="LC_CTYPE=en_US.utf8"
+
+  - name: Install createrepo
+    yum: name=createrepo state=installed
+
+  - name: Create the "sources" dir in /opt
+    file: dest={{ sources_dir }} state=directory
+
+  - name: Create the "rpms" dir in /opt/sources
+    file: dest={{ sources_dir }}/rpms state=directory
+    register: rpmsdir
+
+  - name: Initialize the RPM repository
+    command: createrepo {{ sources_dir }}/rpms
+    when: rpmsdir.changed
+
+  - name: Install the RPM repository in yum config
+    template: src=local.repo dest=/etc/yum.repos.d/local.repo
+
+  - name: Install the OpenSSH clients
+    yum: name=openssh-clients state=installed
+
+  - name: Configure all network interfaces with the same config
+    template: src=ifcfg-ethX dest=/etc/sysconfig/network-scripts/ifcfg-{{ item }}
+    with_items:
+      - eth0
+      - eth1
+      - eth2
+      - eth3
+      - eth4
+      - eth5
+      - eth6
+      - eth7
+      - eth8
+      - eth9
+    tags: config
+
+  - name: Install the custom banner script
+    template: src=rc.local dest=/usr/local/etc/rc.local mode=0755
+    tags: config
+
+  - name: Run the custom banner script at startup
+    lineinfile: dest=/etc/rc.d/rc.local line="/usr/local/etc/rc.local" state=present insertafter=EOF

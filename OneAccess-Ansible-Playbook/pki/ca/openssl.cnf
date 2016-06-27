@@ -1,0 +1,56 @@
+HOME			= .
+RANDFILE		= $ENV::HOME/.rnd
+
+[ ca ]
+default_ca	= RootCA
+
+[ RootCA ]
+x509_extensions = ca_ext
+policy		= policy_anything
+dir		= ./ca			# Where everything is kept
+certs		= $dir/certs		# Where the issued certs are kept
+crl_dir		= $dir/crl		# Where the issued crl are kept
+crlnumber	= $dir/crlnumber	# The current CRL serial number
+database	= $dir/index.txt	# database index file.
+new_certs_dir	= $dir/newcerts		# default place for new certs.
+
+certificate	= $dir/root_ca.crt 	# The CA certificate
+serial		= $dir/serial 		# The current serial number
+crl		= $dir/crl.pem 		# The current CRL
+private_key	= $dir/root_ca.key	# The private key
+default_md	= sha256
+
+
+[ policy_anything ]
+countryName		= optional
+stateOrProvinceName	= optional
+localityName		= optional
+organizationName	= optional
+organizationalUnitName	= optional
+commonName		= supplied
+emailAddress		= optional
+
+[ ca_ext ]
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid:always
+basicConstraints = critical,CA:true
+keyUsage = cRLSign, keyCertSign
+
+[ server_ext ]
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid:always
+basicConstraints = critical,CA:false
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth,clientAuth
+crlDistributionPoints=URI:http://pki.sp0t.xyz/oneaccess_ca.crl
+
+[ req ]
+x509_extensions = ca_ext
+distinguished_name = req_distinguished_name
+prompt = no
+
+[ req_distinguished_name ]
+C = FR
+O = CA Technologies
+OU = Pre Sales
+CN = OneAccess CA

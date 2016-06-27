@@ -1,0 +1,12 @@
+#!/usr/bin/perl --
+use strict;
+use warnings;
+use CGI;
+
+my $q = CGI->new;
+my %headers = map { $_ => $q->http($_) } $q->http();
+
+print $q->header('text/html; charset=UTF-8');
+print "<html><head><title>SiteMinder Hello World</title></head><body><h1>\n";
+print "Welcome " . ($headers{'HTTP_SM_USER_COMMON_NAME'} || "unknown user") . " !";
+print "</h1></body></html>\n";

@@ -1,0 +1,89 @@
+---
+# Console Accounts : root and oneaccess (password = M0g0L1ch)
+
+# JDK
+  java_home: /opt/jdk7
+  java_release: 79
+
+# CA SiteMinder
+  sm_user: smuser
+  sm_home: /home/smuser/CA
+  sm_admin_user: siteminder
+  sm_admin_password: changeme
+  sm_policy_store_port: 40389
+  sm_encryption_key: changeme
+  apache_home: /home/www/httpd
+  wa_user: www
+  wa_home: /home/www/CA
+  wa_public_hostname: idp.apim.ca
+  sm_wamui_hostname: wamui.apim.ca
+  sm_session_store_port: 41389
+
+# CA Directory
+  dx_home: /home/dsa/CA/Directory
+  dx_user: dsa
+  dx_group: etrdir
+  dx_acme_dsa_port: 1389
+
+# Temp dir (used by Arcot products)
+  temp_dir: /root/tmp
+
+# Tomcat
+  tomcat_home: /home/www/tomcat
+  tomcat_user: www
+  tomcat_group: www
+  tomcat_port_prefix: 3
+  tomcat_version: 7.0.64
+
+# Apache
+  httpd_home: /home/www/httpd
+  httpd_user: www
+  httpd_group: www
+  httpd_https_port: 30443
+  httpd_http_port: 30080
+  httpd_certificate_cn: "*.apim.ca"
+  httpd_certificate_password: changeme
+
+# MySQL
+  mysql_root_password: changeme
+  mysql_version: 5.6.27
+
+# SSG
+  ssg_user: layer7
+  ssg_runtime_user: gateway
+  ssg_group: gateway
+  ssg_admin_user: admin
+  ssg_admin_password: changeme
+  ssg_db_user: gateway
+  ssg_db_password: changeme
+  ssg_db_name: ssg
+  ssg_hostname: mag.apim.ca
+  ssg_public_port: 58443
+  ssg_passphrase: changeme
+  ssg_admin_port: 59443
+  ssg_service_port: 58443
+  ssg_mag_port: 50443
+  ssg_ssl_certificate_cn: mag.apim.ca
+  ssg_ssl_certificate_password: changeme
+  ssg_otk_db_name: otk_db
+  ssg_otk_db_user: otk_user
+  ssg_otk_db_password: changeme
+  ssg_mag_public_port: 587
+
+# One Access
+  oneaccess_db_name: oneaccess
+  oneaccess_db_username: oneaccess
+  oneaccess_db_password: changeme
+  oneaccess_static_hostname: static.apim.ca
+  oneaccess_intranet_hostname: intranet.apim.ca
+  oneaccess_public_hostname: oneaccess.apim.ca
+  salesforce_certificate_cn: Salesforce SP Signing Cert
+  salesforce_certificate_password: changeme
+  siteminder_certificate_cn: SiteMinder SAML Signing Cert
+  siteminder_certificate_password: changeme
+  layer7_saml_certificate_cn: Layer7 SAML Signing Cert
+  layer7_saml_certificate_password: changeme
+
+# PKI
+  pki_truststore_password: changeme
+  httpd_pki_hostname: pki.apim.ca

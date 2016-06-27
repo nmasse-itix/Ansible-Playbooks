@@ -1,0 +1,14 @@
+dn: ou=SS,o=SiteMinder
+ou: SS
+objectClass: organizationalUnit
+
+dn: ou=SessionStore,ou=SS,o=SiteMinder
+ou: SessionStore
+objectClass: organizationalUnit
+
+dn: cn=DXAdmin,ou=SS,o=SiteMinder
+cn: DXAdmin
+sn: Admin
+givenName: DX
+userPassword: password
+objectClass: inetOrgPerson

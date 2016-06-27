@@ -1,0 +1,9 @@
+---
+
+  - name: restart sshd
+    service: name=sshd state=reloaded
+
+  - name: update hostname
+    command: hostname {{ shortname }}
+
+ 

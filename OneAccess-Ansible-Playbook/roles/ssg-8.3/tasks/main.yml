@@ -1,0 +1,88 @@
+---
+
+  - name: This module only works on CentOS 6
+    assert:
+      that:
+        - "ansible_os_family == 'RedHat'"
+
+  - name: Install pexpect
+    yum: name=pexpect state=installed
+
+  - name: Copy the SSG 8.3 installation package
+    copy: src={{ item }} dest={{ sources_dir }}/rpms
+    with_items: [ 'ssg-8.3.00-2.noarch.rpm', 'ssg-mag-2.3.0-1.noarch.rpm' ]
+    register: rpmsdir
+    tags: rpm
+
+  - name: Update the RPM local repository
+    command: createrepo {{ sources_dir }}/rpms
+    when: rpmsdir.changed
+    tags: rpm
+
+  - name: Flush the yum caches
+    command: yum clean all
+    when: rpmsdir.changed
+    tags: rpm
+
+  - name: Install SSG 8.3
+    yum: name=ssg state=installed
+    tags: rpm
+
+  - name: Set SSH key for the "gateway" user
+    authorized_key: user={{ ssg_runtime_user }} key="{{ ansible_ssh_public_key }}" manage_dir=yes
+    tags: user
+
+  - name: Copy the SSG setup script
+    template: src=setup_ssg_83.py dest={{ sources_dir }}/setup_ssg_83.py mode=0755
+
+  - name: Setup SSG
+    command: creates=/opt/SecureSpan/Gateway/node/default/etc/conf/node.properties {{ sources_dir }}/setup_ssg_83.py
+
+  - name: Create the hierarchy for auto provisioning
+    file: path=/opt/SecureSpan/Gateway/node/default/etc/bootstrap state=directory owner={{ ssg_user }} group={{ ssg_group }} mode=0755
+
+  - name: Create the hierarchy for license auto provisioning
+    file: path=/opt/SecureSpan/Gateway/node/default/etc/bootstrap/license state=directory owner={{ ssg_user }} group={{ ssg_group }} mode=0755
+    tags: license
+
+  - name: Publish the licence for auto provisioning
+    copy: src={{ item }} dest=/opt/SecureSpan/Gateway/node/default/etc/bootstrap/license/
+    with_items: [ 'gw_license.xml', 'mag_license.xml' ]
+    tags: license
+
+  - name: Create the hierarchy for service auto provisioning
+    file: path=/opt/SecureSpan/Gateway/node/default/etc/bootstrap/services state=directory owner={{ ssg_user }} group={{ ssg_group }} mode=0755
+
+  - name: Publish the services for auto provisioning
+    file: state=touch owner={{ ssg_user }} group={{ ssg_group }} mode=0755 dest=/opt/SecureSpan/Gateway/node/default/etc/bootstrap/services/{{ item }}
+    with_items: [ 'restman' ]
+
+  - name: Start the Gateway service
+    command: /opt/SecureSpan/Gateway/runtime/bin/gateway.sh start
+
+  - name: Install the tcp_tune script
+    template: dest=/etc/init.d/tcp_tune src=tcp_tune mode=0755
+
+  - name: Make sure the tcp_tune service is started and enabled
+    service: name=tcp_tune enabled=yes state=restarted
+
+  - name: Generate certificates for Layer7
+    local_action: command creates="{{ lookup('env', 'BASEDIR') }}/roles/ssg-8.3/files/layer7.jks" "{{ lookup('env', 'BASEDIR') }}/pki/gen_certs.sh"
+    sudo: false
+    environment:
+      CERT_CN: "{{ ssg_ssl_certificate_cn }}"
+      PASSWORD: "{{ ssg_ssl_certificate_password }}"
+      BASENAME: "layer7"
+      OUTDIR: "{{ lookup('ENV', 'BASEDIR') }}/roles/ssg-8.3/files/"
+    tags: certificate
+    when: ssg_ssl_certificate_cn is defined
+
+  - name: Install MAG 2.3
+    yum: name=ssg-mag state=installed
+    tags: rpm
+
+  - name: Import the MAG DB Schema
+    mysql_db: login_user={{ ssg_otk_db_user }} login_password={{ ssg_otk_db_password }} name={{ ssg_otk_db_name }} state=import target=/opt/SecureSpan/Gateway/config/etc/sql/mag_db_schema.sql
+    tags:
+      - db
+      - db-schema

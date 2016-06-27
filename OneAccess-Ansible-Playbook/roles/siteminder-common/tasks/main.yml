@@ -1,0 +1,81 @@
+---
+  - name: This module only works on CentOS 6
+    assert:
+      that:
+        - "ansible_os_family == 'RedHat'"
+
+  - name: Install compat–gcc-34-c++
+    yum: name=compat-gcc-34-c++ state=present
+
+  - name: Upgrade all required libs (64 bits version)
+    yum: name={{ item }} state=latest
+    when: "ansible_architecture == 'x86_64'"
+    with_items:
+      - ncurses-libs.x86_64
+      - compat-libtermcap.x86_64
+      - libstdc++.x86_64
+      - libXrender.x86_64
+      - libXtst.x86_64
+      - libuuid.x86_64
+      - libSM.x86_64
+      - libXext.x86_64
+      - libXi.x86_64
+      - libXft.x86_64
+      - libXt.x86_64
+      - libXp.x86_64
+      - freetype.x86_64
+      - expat.x86_64
+      - fontconfig.x86_64
+      - libX11.x86_64
+      - libxcb.x86_64
+      - libXau.x86_64
+      - compat-db42.x86_64
+      - compat-db43.x86_64
+      - libICE.x86_64
+      - compat-libstdc++-33.x86_64
+      - compat-db.x86_64
+
+  - name: Install all required libs (32 bits version)
+    yum: name={{ item }} state=present
+    with_items:
+      - ncurses-libs.i686
+      - compat-libtermcap.i686
+      - libstdc++.i686
+      - libXrender.i686
+      - libXtst.i686
+      - libuuid.i686
+      - libSM.i686
+      - libXext.i686
+      - libXi.i686
+      - libXft.i686
+      - libXt.i686
+      - libXp.i686
+      - freetype.i686
+      - expat.i686
+      - fontconfig.i686
+      - libX11.i686
+      - libxcb.i686
+      - libXau.i686
+      - compat-db42.i686
+      - compat-db43.i686
+      - libICE.i686
+      - compat-libstdc++-33.i686
+      - compat-db.i686
+
+  - name: Install KSH
+    yum: name=ksh state=installed
+
+  - name: Install xauth (needed by smconsole)
+    yum: name=xorg-x11-xauth state=present
+
+  - name: Install RNGD
+    yum: name=rng-tools state=installed
+
+  - name: Install the RNGD configuration
+    lineinfile: dest=/etc/sysconfig/rngd line='EXTRAOPTIONS="-r /dev/urandom -o /dev/random -b -t .1"' regexp="^EXTRAOPTIONS="
+
+  - name: Restart RNGD and make sure it is enabled
+    service: name=rngd state=restarted enabled=yes
+
+  - name: Install patch (needed by ansible)
+    yum: name=patch state=installed

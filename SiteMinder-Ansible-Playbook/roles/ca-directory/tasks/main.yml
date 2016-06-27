@@ -1,0 +1,50 @@
+---
+
+ - name: Install TCSH
+   yum: name=tcsh state=installed
+
+ - name: Install AT
+   yum: name=at state=installed
+
+ - name: Create the CA Directory source folder
+   file: path={{ sources_dir }}/ca-directory state=directory
+
+ - name: Extract the installation materials
+   unarchive: creates={{ sources_dir }}/ca-directory/linux_x86 src=cadir-12.0sp4.tgz dest={{ sources_dir }}/ca-directory
+
+ - name: Copy the unattended response file
+   template: src=ca-dir.resp dest={{ sources_dir }}/ca-directory/responsefile.txt
+
+ - name: Install CA Directory
+   command: chdir={{ sources_dir }}/ca-directory/linux_x86/dxserver/install creates={{ dx_home }}/dxserver {{ sources_dir }}/ca-directory/linux_x86/dxserver/install/dxsetup.sh -responsefile {{ sources_dir }}/ca-directory/responsefile.txt -silent
+
+ - name: Set SSH key for dxuser
+   authorized_key: user={{ dx_user }} key="{{ lookup('file', '/Users/nicolas/.ssh/id_rsa_ca.pub') }}" manage_dir=yes
+   tags: user
+
+ - name: Create the ACME datastore
+   command: creates="{{ dx_home }}/dxserver/config/servers/ACMEUsers.dxi" /bin/sh -l -c "dxnewdsa ACMEUsers {{ dx_acme_dsa_port }}"
+   sudo_user: "{{ dx_user }}"
+
+ - name: Copy the LDIF file into the sources dir
+   copy: src=sample.ldif dest={{ sources_dir }}/sample.ldif
+   tags: userstore
+
+ - name: Stop the ACME DSA
+   command: /bin/sh -l -c "dxserver stop ACMEUsers"
+   sudo_user: "{{ dx_user }}"
+   tags: userstore
+
+ - name: Load the LDIF into the ACME datastore
+   command: /bin/sh -l -c "dxloaddb ACMEUsers {{ sources_dir }}/sample.ldif"
+   sudo_user: "{{ dx_user }}"
+   tags: userstore
+
+ - name: Flag the ACME DSA as "autostart"
+   file: path={{ dx_home }}/dxserver/config/autostart/ACMEUsers state=touch
+   sudo_user: "{{ dx_user }}"
+
+ - name: Start the ACME DSA
+   command: /bin/sh -l -c "dxserver start ACMEUsers"
+   sudo_user: "{{ dx_user }}"
+   tags: userstore

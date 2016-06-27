@@ -1,0 +1,62 @@
+#!/usr/bin/python2
+
+import pexpect
+import sys
+import os
+
+os.environ['IA_TEMPDIR'] = '{{ temp_dir }}'
+
+child = pexpect.spawn ('/opt/SecureSpan/Gateway/runtime/bin/setup.sh')
+child.logfile = sys.stdout
+child.timeout = 300
+
+child.expect('Please make a selection:')
+child.sendline("2")
+child.expect('Java VM Path .*:')
+child.sendline('{{ java_home }}/jre')
+child.expect('Java VM Memory Allocation')
+child.sendline('')
+child.expect("Database Connection. .Yes.")
+child.sendline('')
+child.expect('Database Host .*:')
+child.sendline('localhost')
+child.expect('Database Port .*:')
+child.sendline('3306')
+child.expect('Database Name .*:')
+child.sendline('{{ ssg_db_name }}')
+child.expect('Database Username .*:')
+child.sendline('{{ ssg_db_user }}')
+child.expect('Database Password:')
+child.sendline('{{ ssg_db_password }}')
+child.expect('Confirm Database Password:')
+child.sendline('{{ ssg_db_password }}')
+child.expect('Administrative Database Username:')
+child.sendline('root')
+child.expect('Administrative Database Password:')
+child.sendline('{{ mysql_root_password }}')
+child.expect('Configure Database Failover Connection')
+child.sendline('')
+child.expect('SSM Username:')
+child.sendline('{{ ssg_admin_user }}')
+child.expect('SSM Password:')
+child.sendline('{{ ssg_admin_password }}')
+child.expect('Confirm SSM Password:')
+child.sendline('{{ ssg_admin_password }}')
+child.expect('Administrative HTTPS Listener. .No.:')
+child.sendline('Yes')
+child.expect('Administrative IP Address ...:')
+child.sendline('')
+child.expect('Administrative Port .8443.:')
+child.sendline('{{ ssg_service_port }}')
+child.expect('Cluster Host .*:')
+child.sendline('{{ ssg_hostname }}')
+child.expect('Cluster Passphrase:')
+child.sendline('{{ ssg_passphrase }}')
+child.expect('Confirm Cluster Passphrase:')
+child.sendline('{{ ssg_passphrase }}')
+child.expect('Press .Enter. to continue')
+child.sendline('')
+child.expect('Press .Enter. to continue')
+child.sendline('')
+child.expect('Please make a selection:')
+child.sendline("X")

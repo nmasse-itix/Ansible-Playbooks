@@ -1,0 +1,23 @@
+umask 027
+DXHOME={{ dx_home }}/dxserver
+PATH=$DXHOME/bin:${PATH}
+LD_LIBRARY_PATH=$DXHOME/bin:$LD_LIBRARY_PATH
+export DXHOME PATH LD_LIBRARY_PATH
+
+if [ -z "$LD_LIBRARY_PATH" ]; then
+    LD_LIBRARY_PATH={{ java_home }}/lib/i386/native_threads
+else
+    LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:{{ java_home }}/lib/i386/native_threads
+fi
+export LD_LIBRARY_PATH
+POSIXLY_CORRECT=1
+export POSIXLY_CORRECT
+
+# CA Shared Components
+if [ -f /etc/profile.CA ]; then
+    . /etc/profile.CA
+    if [ ! -z $CALIB ]; then
+        LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${CALIB}
+        export LD_LIBRARY_PATH
+    fi
+fi

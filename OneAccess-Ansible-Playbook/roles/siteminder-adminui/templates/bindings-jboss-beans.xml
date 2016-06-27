@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<deployment xmlns="urn:jboss:bean-deployer:2.0">
+
+	<bean name="ServiceBindingManager"
+	      class="org.jboss.services.binding.ServiceBindingManager">
+		<annotation>@org.jboss.aop.microcontainer.aspects.jmx.JMX(name="jboss.system:service=ServiceBindingManager", exposedInterface=org.jboss.services.binding.ServiceBindingManagerMBean.class, registerDirectly=true)</annotation>
+		<constructor factoryMethod="getServiceBindingManager">
+			<factory bean="ServiceBindingManagementObject"/>
+		</constructor>
+	</bean>
+
+	<bean name="ServiceBindingManagementObject"
+	      class="org.jboss.services.binding.managed.ServiceBindingManagementObject">
+		<constructor>
+			<parameter>ports-default</parameter>
+			<parameter>
+				<set>
+					<bean class="org.jboss.services.binding.impl.ServiceBindingSet">
+						<constructor>
+							<parameter>ports-default</parameter>
+							<parameter>${jboss.bind.address}</parameter>
+							<parameter>0</parameter>
+							<parameter><null/></parameter>
+						</constructor>
+					</bean>
+				</set>
+			</parameter>
+			<parameter>
+				<set>
+					<bean class="org.jboss.services.binding.ServiceBindingMetadata">
+						<property name="serviceName">jboss.web:service=WebServer</property>
+						<!-- HTTPS address and port are defined below -->
+						<property name="hostName">127.0.0.1</property>
+						<property name="port">48080</property>
+						<property name="fixedHostName">false</property>
+						<property name="description">JBoss Web HTTP connector socket</property>
+						<property name="serviceBindingValueSourceConfig">
+							<bean class="org.jboss.services.binding.impl.XSLTServiceBindingValueSourceConfig">
+								<constructor>
+									<parameter><![CDATA[
+  <xsl:stylesheet xmlns:xsl='http://www.w3.org/1999/XSL/Transform' version='1.0'>
+    <xsl:output method="xml" />
+    <xsl:param name="host"/>
+    <xsl:param name="port"/>
+    <xsl:param name="httpsHost"/>
+    <xsl:param name="httpsPort"/>
+    <xsl:param name="keyStore"/>
+    <xsl:param name="keyStoreType"/>
+    <xsl:param name="keyStorePassword"/>
+
+    <xsl:template match="/">
+      <xsl:apply-templates/>
+    </xsl:template>
+
+    <xsl:template match="Connector[(not(@SSLEnabled) or @SSLEnabled='false') and @port = '8080']">
+      <Connector>
+        <xsl:for-each select="@*">
+          <xsl:choose>
+            <xsl:when test="(name() = 'address')">
+              <xsl:attribute name="address"><xsl:value-of select="$host" /></xsl:attribute>
+            </xsl:when>
+            <xsl:when test="(name() = 'port')">
+              <xsl:attribute name="port"><xsl:value-of select="$port" /></xsl:attribute>
+            </xsl:when>
+            <xsl:when test="(name() = 'redirectPort')">
+              <xsl:attribute name="redirectPort"><xsl:value-of select="$httpsPort" /></xsl:attribute>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:attribute name="{name()}"><xsl:value-of select="." /></xsl:attribute>
+            </xsl:otherwise>
+          </xsl:choose>
+        </xsl:for-each>
+        <xsl:apply-templates/>
+      </Connector>
+    </xsl:template>
+
+    <xsl:template match="Connector[@SSLEnabled='true' and @port = '8443']">
+      <Connector>
+        <xsl:for-each select="@*">
+          <xsl:choose>
+            <xsl:when test="(name() = 'address')">
+              <xsl:attribute name="address"><xsl:value-of select="$httpsHost" /></xsl:attribute>
+            </xsl:when>
+            <xsl:when test="(name() = 'port')">
+              <xsl:attribute name="port"><xsl:value-of select="$httpsPort" /></xsl:attribute>
+            </xsl:when>
+            <xsl:when test="(name() = 'keystoreFile')">
+              <xsl:attribute name="keystoreFile"><xsl:value-of select="$keyStore" /></xsl:attribute>
+            </xsl:when>
+            <xsl:when test="(name() = 'keystoreType')">
+              <xsl:attribute name="keystoreType"><xsl:value-of select="$keyStoreType" /></xsl:attribute>
+            </xsl:when>
+            <xsl:when test="(name() = 'keystorePass')">
+              <xsl:attribute name="keystorePass"><xsl:value-of select="$keyStorePassword" /></xsl:attribute>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:attribute name="{name()}"><xsl:value-of select="." /></xsl:attribute>
+            </xsl:otherwise>
+          </xsl:choose>
+        </xsl:for-each>
+        <xsl:apply-templates/>
+      </Connector>
+    </xsl:template>
+
+    <xsl:template match="*|@*">
+      <xsl:copy>
+        <xsl:apply-templates select="@*|node()"/>
+      </xsl:copy>
+    </xsl:template>
+  </xsl:stylesheet>]]>
+									</parameter>
+									<parameter>
+										<!-- No clean way to apply two bindings to one resource -->
+										<map keyClass="java.lang.String" valueClass="java.lang.String">
+											<entry>
+												<key>httpsHost</key>
+												<value>127.0.0.1</value>
+											</entry>
+											<entry>
+												<key>httpsPort</key>
+<value>48443</value>
+											</entry>
+											<entry>
+												<key>keyStore</key>
+												<value>${javax.net.ssl.keyStore}</value>
+											</entry>
+											<entry>
+												<key>keyStoreType</key>
+												<value>${javax.net.ssl.keyStoreType}</value>
+											</entry>
+											<entry>
+												<key>keyStorePassword</key>
+												<value>${javax.net.ssl.keyStorePassword}</value>
+											</entry>
+										</map>
+									</parameter>
+								</constructor>
+							</bean>
+						</property>
+					</bean>
+				</set>
+			</parameter>
+		</constructor>
+	</bean>
+
+</deployment>

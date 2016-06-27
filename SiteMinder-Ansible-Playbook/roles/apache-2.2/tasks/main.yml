@@ -1,0 +1,63 @@
+---
+
+  - name: This module only works on CentOS 6 x86
+    assert:
+      that:
+        - "ansible_userspace_bits == '32'"
+        - "ansible_os_family == 'RedHat'"
+# FIXME: check why it does not work
+#        - "ansible_lsb['major_release'] == '6'"
+
+  - name: Create the 'httpd' user
+    user: name={{ httpd_user }} comment="WWW User"
+    tags: user
+
+  - name: Set SSH key for the 'httpd' user
+    authorized_key: user={{ httpd_user }} key="{{ lookup('file', '/Users/nicolas/.ssh/id_rsa_ca.pub') }}" manage_dir=yes
+    tags: user
+
+  - name: Install GCC
+    yum: name=gcc state=installed
+
+  - name: Create the home dir for Apache
+    file: path={{ httpd_home }} state=directory
+    sudo_user: "{{ httpd_user }}"
+
+  - name: Create the sources dir for Apache
+    file: path={{ httpd_home }}/src state=directory
+    sudo_user: "{{ httpd_user }}"
+
+  - name: Unarchive the apache distribution
+    unarchive: creates={{ httpd_home }}/src/httpd-2.2.29 src=httpd-2.2.29.tar.gz dest={{ httpd_home }}/src
+    sudo_user: "{{ httpd_user }}"
+
+  - name: ./configure Apache
+    shell: chdir={{ httpd_home }}/src/httpd-2.2.29 LIBS=-lpthread ./configure --enable-modules="proxy proxy-http proxy-connect headers rewrite" --prefix={{ httpd_home }}
+    sudo_user: "{{ httpd_user }}"
+
+  - name: make && make install Apache
+    shell: chdir={{ httpd_home }}/src/httpd-2.2.29 LIBS=-lpthread make && make install
+    sudo_user: "{{ httpd_user }}"
+
+  - name: Disable the Apache default port
+    lineinfile: dest={{ httpd_home }}/conf/httpd.conf regexp="^Listen " state=absent
+    sudo_user: "{{ httpd_user }}"
+
+  - name: Install the headers CGI
+    template: src=headers dest={{ httpd_home }}/cgi-bin/headers mode=0755
+    sudo_user: "{{ httpd_user }}"
+
+  - name: Install perl-CGI
+    yum: name=perl-CGI state=installed
+
+  - name: Install perl-libwww-perl
+    yum: name=perl-libwww-perl state=installed
+
+  - name: Install the custom.conf
+    template: src=custom.conf dest={{ httpd_home }}/conf/custom.conf mode=644
+    sudo_user: "{{ httpd_user }}"
+    tags: config
+
+  - name: Source the custom.conf
+    lineinfile: dest={{ httpd_home }}/conf/httpd.conf line="Include {{ httpd_home }}/conf/custom.conf" insertafter="EOF" state=present
+    sudo_user: "{{ httpd_user }}"

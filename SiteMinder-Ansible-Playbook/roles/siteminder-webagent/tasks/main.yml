@@ -1,0 +1,91 @@
+---
+
+  - name: This module only works on CentOS 6 x86
+    assert:
+      that:
+        - "ansible_userspace_bits == '32'"
+        - "ansible_os_family == 'RedHat'"
+# FIXME: check why it does not work
+#        - "ansible_lsb['major_release'] == '6'"
+
+  - name: Create the 'wauser' user
+    user: name={{ wa_user }} comment="CA SiteMinder Web Agent User"
+    tags: user
+
+  - name: Set SSH key for wauser
+    authorized_key: user={{ wa_user }} key="{{ lookup('file', '/Users/nicolas/.ssh/id_rsa_ca.pub') }}" manage_dir=yes
+    tags: user
+
+  - name: Set the required .profile for wauser
+    template: src=profile dest=/home/{{ wa_user }}/.bash_profile
+    sudo_user: "{{ wa_user }}"
+    tags: user
+
+  - name: Create the local dir for the wauser
+    file: path=/home/{{ wa_user }}/local state=directory
+    sudo_user: "{{ wa_user }}"
+
+  - name: Copy the SiteMinder Web Agent files to sources_dir
+    unarchive: creates={{ sources_dir }}/ca-wa-12.52-linux.bin src=smwa-12.52-cr01-linux.zip dest={{ sources_dir }}
+
+  - name: Copy the unattended installation response file
+    template: src=ca-wa-installer.properties dest={{ sources_dir }}/ca-wa-installer.properties
+
+  - name: Run the SiteMinder Web Agent installer
+    command: creates={{ wa_home }}/webagent/bin {{ sources_dir }}/ca-wa-12.52-linux.bin -f {{ sources_dir }}/ca-wa-installer.properties -i silent
+    sudo_user: "{{ wa_user }}"
+    ignore_errors: yes
+
+#
+# Manual Configuration to create :
+#  - agent_default
+#  - ACO_ApacheWebAgent, with DefaultAgentName = agent_default
+#  - HCO_Local
+#
+# TODO : XPS Import
+
+  - name: Configure the SiteMinder Web Agent
+    shell: source {{ wa_home }}/webagent/ca_wa_env.sh && {{ wa_home }}/webagent/ca-wa-config.sh -f {{ sources_dir }}/ca-wa-installer.properties -i silent
+    sudo_user: "{{ wa_user }}"
+    ignore_errors: yes
+
+# In case of failure ?
+#
+#  - name: Run smreghost to catchup configuration script failure
+#    shell: source {{ wa_home }}/webagent/ca_wa_env.sh && {{ wa_home }}/webagent/bin/smreghost -i 127.0.0.1 -u {{ sm_admin_user }} -p {{ sm_admin_password }} -f {{ wa_home }}/webagent/config/SmHost.conf -o -hc HCO_Local -hn {{ inventory_hostname }}
+#    sudo_user: "{{ wa_user }}"
+#
+# and edit conf/WebAgent.conf  to add path to SmHosts
+
+  - name: Copy the SiteMinder Web Agent Option Pack files to sources_dir
+    unarchive: creates={{ sources_dir }}/ca-wa-opack-12.52-linux.bin src=smwaop-12.52-cr01-linux.zip dest={{ sources_dir }}
+
+  - name: Copy the unattended installation response file
+    template: src=ca-wa-opack-installer.properties dest={{ sources_dir }}/ca-wa-opack-installer.properties
+
+  - name: Run the SiteMinder Web Agent installer
+    command: creates={{ wa_home }}/webagent/affwebservices {{ sources_dir }}/ca-wa-opack-12.52-linux.bin -f {{ sources_dir }}/ca-wa-opack-installer.properties -i silent
+    sudo_user: "{{ wa_user }}"
+    ignore_errors: yes
+
+  - name: Install AffWebServices.properties
+    template: src=AffWebServices.properties dest={{ wa_home }}/webagent/affwebservices/WEB-INF/classes/AffWebServices.properties
+    sudo_user: "{{ wa_user }}"
+    tags: config
+
+  - name: Install LoggerConfig.properties
+    template: src=LoggerConfig.properties dest={{ wa_home }}/webagent/affwebservices/WEB-INF/classes/LoggerConfig.properties
+    sudo_user: "{{ wa_user }}"
+    tags: config
+
+  - name: Install WebAgent.conf
+    template: src=WebAgent.conf dest={{ wa_home }}/webagent/affwebservices/WEB-INF/classes/WebAgent.conf
+    sudo_user: "{{ wa_user }}"
+
+  - name: Install the AffWebServices WEBAPP
+    file: state=link src={{ wa_home }}/webagent/affwebservices dest={{ tomcat_home }}/webapps/affwebservices
+    sudo_user: "{{ wa_user }}"
+
+  - name: Create setenv.sh for tomcat
+    template: src=profile dest={{ tomcat_home }}/bin/setenv.sh
+    sudo_user: "{{ wa_user }}"

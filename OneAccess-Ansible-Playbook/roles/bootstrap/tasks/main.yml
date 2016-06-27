@@ -1,0 +1,28 @@
+---
+
+ - name: Create user OneAccess
+   user: name=oneaccess group=users groups=users,wheel state=present comment="OneAccess privileged user" password="*"
+   sudo_user: root
+   tags:
+     - bootstrap
+     - user
+
+ - name: Set SSH key for root
+   authorized_key: user=root key="{{ ansible_ssh_public_key }}" manage_dir=yes
+   sudo_user: root
+   tags:
+     - bootstrap
+     - user
+
+ - name: Set SSH key for user OneAccess
+   authorized_key: user=oneaccess key="{{ ansible_ssh_public_key }}" manage_dir=yes
+   sudo_user: root
+   tags:
+     - bootstrap
+     - user
+
+ - name: Configure SUDO
+   template: src=sudoers dest=/etc/sudoers owner=root group=root mode=0440 validate="/usr/sbin/visudo -cf %s"
+   tags:
+     - bootstrap
+     - config

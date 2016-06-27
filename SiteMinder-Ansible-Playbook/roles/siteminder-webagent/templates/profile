@@ -1,0 +1,6 @@
+unset LANG
+unset LC_CTYPE
+unset LC_ALL
+. $HOME/.bashrc
+. $HOME/CA/webagent/ca_wa_env.sh
+. $HOME/CA/webagent/ca-wa-opack-env.sh

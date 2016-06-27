@@ -1,0 +1,31 @@
+---
+
+ - name: Bootstrap a CentOS node
+   hosts: bootstrap
+   sudo: no
+   roles:
+    - bootstrap
+
+ - name: OneAccess Demo
+   hosts: sm
+   sudo: yes
+   roles:
+     - bootstrap
+     - base
+     - vmware-tools
+     - java-7
+     - pki
+     - ca-directory
+     - siteminder-common
+     - siteminder-policy-server
+     - siteminder-adminui
+     - apache-2.2
+     - tomcat-7
+     - siteminder-webagent
+     - mysql-ee-5.6
+     - ssg-8.3
+     - oneaccess
+     - iptables
+#     - prepare-to-export
+#     - service-control
+#     - backup

@@ -1,0 +1,30 @@
+.profile {
+  background-color: #CHANGEME !important;
+}
+.applications, .content {
+  background-color: #CHANGEME !important;
+}
+.profile__title, .profile__name {
+  color: #CHANGEME !important;
+}
+.profile__picture {
+  border: 2px solid #CHANGEME !important;
+}
+.mask {
+  background: rgba(0, 0, 0, 0.8) none repeat scroll 0% 0% !important;
+}
+
+.off-canvas__nav {
+  background-color: #CHANGEME !important;
+  color: #CHANGEME !important;
+}
+.off-canvas-list li ul {
+  background-color: #CHANGEME !important;
+}
+
+/* reduce the one access logo in case the customer logo is too big */
+@media screen and (max-width:767px) {
+  .header__logo-oa {
+    height: 20px !important;
+  }
+}

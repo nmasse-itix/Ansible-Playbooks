@@ -1,0 +1,46 @@
+---
+
+  - name: This module only works on RHEL/CentOS
+    assert:
+      that:
+        - "ansible_os_family == 'RedHat'"
+
+  - name: Create the tomcat group
+    group: name={{ tomcat_group }} state=present
+    tags: user
+
+  - name: Create the tomcat user
+    user: name={{ tomcat_user }} state=present group={{ tomcat_group }}
+    tags: user
+
+  - name: Set SSH key for the tc user
+    authorized_key: user={{ tomcat_user }} key="{{ lookup('file', '/Users/nicolas/.ssh/id_rsa_ca.pub') }}" manage_dir=yes
+    tags: user
+
+  - name: Extract the Tomcat 7 archive
+    unarchive: creates=/home/{{ tomcat_user }}/apache-tomcat-7.0.53 src=apache-tomcat-7.0.53.tar.gz dest="/home/{{ tomcat_user }}/"
+    sudo_user: "{{ tomcat_user }}"
+
+  - name: Move it to $TOMCAT_HOME
+    command: creates={{ tomcat_home }} mv /home/{{ tomcat_user }}/apache-tomcat-7.0.53 {{ tomcat_home }}
+    sudo_user: "{{ tomcat_user }}"
+
+  - name: Copy the MySQL JDBC driver to $TOMCAT_HOME/lib
+    copy: src=mysql-connector-java-commercial-5.1.30-bin.jar dest={{ tomcat_home }}/lib
+    sudo_user: "{{ tomcat_user }}"
+
+  - name: Change ports in server.xml
+    template: src=server.xml dest={{ tomcat_home }}/conf/server.xml
+    sudo_user: "{{ tomcat_user }}"
+    tags: config
+
+  - name: Prevent Tomcat from rotating logs
+    template: src=logging.properties dest={{ tomcat_home }}/conf/logging.properties
+    sudo_user: "{{ tomcat_user }}"
+    tags: config
+
+#  - name: Create the tomcat startup script in /etc/init.d/
+#    template: src=tomcat_init_script dest=/etc/init.d/tomcat mode=0755
+
+#  - name: Enable the tomcat startup script
+#    service: name=tomcat state=started enabled=on

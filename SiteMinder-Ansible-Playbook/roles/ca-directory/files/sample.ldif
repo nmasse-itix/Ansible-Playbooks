@@ -1,0 +1,38 @@
+dn: o=ACME
+objectClass: organization
+objectClass: top
+description: ACME Inc.
+o: ACME
+
+dn: uid=kdavies,o=ACME
+objectClass: person
+objectClass: inetOrgPerson
+objectClass: top
+uid: kdavies
+userpassword: CAdemo123
+givenname: Kate
+cn: Kate DAVIES
+sn: DAVIES
+mail: kate.davies@acme.test
+
+dn: uid=jsmith,o=ACME
+objectClass: person
+objectClass: inetOrgPerson
+objectClass: top
+uid: jsmith
+userpassword: CAdemo123
+givenname: John
+cn: John SMITH
+sn: DAVIES
+mail: john.smith@acme.test
+
+dn: uid=bevans,o=ACME
+objectClass: person
+objectClass: inetOrgPerson
+objectClass: top
+uid: bevans
+userpassword: CAdemo123
+givenname: Bill
+cn: Bill EVANS
+sn: EVANS
+mail: bill.evans@acme.test

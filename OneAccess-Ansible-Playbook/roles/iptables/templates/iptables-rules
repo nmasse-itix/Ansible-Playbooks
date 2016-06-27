@@ -1,0 +1,24 @@
+*nat
+:PREROUTING ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+-A PREROUTING -p tcp -m tcp --dport 443 -j REDIRECT --to-ports {{ httpd_https_port }}
+-A PREROUTING -p tcp -m tcp --dport 80 -j REDIRECT --to-ports {{ httpd_http_port }}
+-A PREROUTING -p tcp -m tcp --dport {{ ssg_mag_public_port }} -j REDIRECT --to-ports {{ ssg_mag_port }}
+COMMIT
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -p icmp -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A INPUT -p tcp -m state --state NEW -m tcp --dport {{ httpd_https_port }} -j ACCEPT
+-A INPUT -p tcp -m state --state NEW -m tcp --dport {{ httpd_http_port }} -j ACCEPT
+-A INPUT -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT
+-A INPUT -p tcp -m state --state NEW -m tcp --dport {{ ssg_admin_port }} -j ACCEPT
+-A INPUT -p tcp -m state --state NEW -m tcp --dport {{ ssg_service_port }} -j ACCEPT
+-A INPUT -p tcp -m state --state NEW -m tcp --dport {{ ssg_mag_port }} -j ACCEPT
+-A INPUT -j REJECT --reject-with icmp-host-prohibited
+-A FORWARD -j REJECT --reject-with icmp-host-prohibited
+COMMIT

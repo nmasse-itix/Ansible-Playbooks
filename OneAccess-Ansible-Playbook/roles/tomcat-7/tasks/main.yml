@@ -1,0 +1,58 @@
+---
+
+  - name: This module only works on RHEL/CentOS
+    assert:
+      that:
+        - "ansible_os_family == 'RedHat'"
+
+  - name: Create the tomcat group
+    group: name={{ tomcat_group }} state=present
+    tags: user
+
+  - name: Create the tomcat user
+    user: name={{ tomcat_user }} state=present group={{ tomcat_group }}
+    tags: user
+
+  - name: Set SSH key for the tc user
+    authorized_key: user={{ tomcat_user }} key="{{ ansible_ssh_public_key }}" manage_dir=yes
+    tags: user
+
+  - name: Download tomcat
+    command: wget -c --no-check-certificate http://www.mirrorservice.org/sites/ftp.apache.org/tomcat/tomcat-7/v{{ tomcat_version }}/bin/apache-tomcat-{{ tomcat_version }}.tar.gz -O {{ sources_dir }}/apache-tomcat-{{ tomcat_version }}.tar.gz
+
+  - name: Extract the Tomcat 7 archive
+    unarchive: creates=/home/{{ tomcat_user }}/apache-tomcat-{{ tomcat_version }} src={{ sources_dir }}/apache-tomcat-{{ tomcat_version }}.tar.gz dest="/home/{{ tomcat_user }}/" copy=no
+    sudo_user: "{{ tomcat_user }}"
+
+  - name: Move it to $TOMCAT_HOME
+    command: creates={{ tomcat_home }} mv /home/{{ tomcat_user }}/apache-tomcat-{{ tomcat_version }} {{ tomcat_home }}
+    sudo_user: "{{ tomcat_user }}"
+
+  - name: Copy the MySQL JDBC driver to $TOMCAT_HOME/lib
+    copy: src=mysql-connector-java-commercial-5.1.30-bin.jar dest={{ tomcat_home }}/lib
+    sudo_user: "{{ tomcat_user }}"
+
+  - name: Change ports in server.xml
+    template: src=server.xml dest={{ tomcat_home }}/conf/server.xml
+    sudo_user: "{{ tomcat_user }}"
+    tags: config
+
+  - name: Prevent Tomcat from rotating logs
+    template: src=logging.properties dest={{ tomcat_home }}/conf/logging.properties
+    sudo_user: "{{ tomcat_user }}"
+    tags: config
+
+  - name: Create setenv.sh for tomcat
+    template: src=profile dest={{ tomcat_home }}/bin/setenv.sh
+    sudo_user: "{{ tomcat_user }}"
+    tags: config
+
+  - name: Create setenv.sh for tomcat
+    template: src=custom.sh dest={{ tomcat_home }}/bin/custom.sh
+    sudo_user: "{{ tomcat_user }}"
+    tags: config
+
+  - name: Upload the truststore
+    copy: src={{ lookup('ENV', 'BASEDIR') }}/pki/truststore.jks dest={{ tomcat_home }}/conf/trust.jks
+    sudo_user: "{{ tomcat_user }}"
+    tags: certificate

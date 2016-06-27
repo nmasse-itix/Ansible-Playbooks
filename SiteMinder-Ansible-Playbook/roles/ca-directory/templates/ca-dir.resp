@@ -1,0 +1,38 @@
+# ==============================
+#   CA Directory Response File
+# ==============================
+# r12 build 9119
+# Thu Jul 17 17:14:09 CEST 2014
+
+# User parameters
+INSTUSER=root
+DXUSER={{ dx_user }}
+DXSHELL=/bin/csh
+DXUID=
+DXGROUP={{ dx_group }}
+DXGID=
+
+# Install parameters
+INSTALLDX=y
+INSTALLDOC=y
+INSTALLDXA=y
+RUN64BIT=n
+SETUID=n
+
+# Location parameters
+ETDIRHOME={{ dx_home }}
+DXHOME={{ dx_home }}/dxserver
+DXGRIDLOC=
+DOCHOME={{ dx_home }}/doc
+
+# DXadmind parameters
+DXMANAGERHOST={{ inventory_hostname }}
+DXADMINDPORT={{ dxadmind_port }}
+DXADMINDPASS={{ dxadmind_password }}
+
+# Upgrade parameters
+BACKUPBIN=
+BACKUPLOC=
+BACKUPDBS=
+RESTARTDSAS=
+LDIFLOC=

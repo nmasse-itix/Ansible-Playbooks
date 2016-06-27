@@ -1,0 +1,35 @@
+# ==================================
+#   CA Directory Response File
+# ==================================
+# This response file is used to provide the default responses to dxsetup
+# for all installations.
+#
+# The current defaults conform to CA installation standards so these should
+# be taken into account when making modifications.
+#
+# Ensure the variable names being set are not changed and that this file
+# is Bourne Shell compatible.
+#
+
+INSTUSER=root
+ETDIRHOME="{{ dx_home }}"
+
+INSTALLDXWEBSERVER=y
+INSTALLDXMANAGER=y
+INSTALLDOC=y
+
+DXHOME="{{ dx_home }}/dxserver"
+DXWEBHOME="{{ dx_home }}/dxwebserver"
+JAVA_LOC="{{ java_home }}/jre/bin/java"
+
+DEFAULT_DXUSER={{ dx_user }}
+DXSHELL=/bin/csh
+DXGROUP={{ dx_group }}
+
+DXWEBSERVER_CONNECT_PORT=8080
+DXWEBSERVER_SECURE_PORT=8443
+DXWEBSERVER_SHUTDOWN_PORT=8005
+
+# This one seems to be hardcoded
+DXMANAGERUSER={{ dxmanager_user }}
+DXMANAGERPASS={{ dxmanager_password }}

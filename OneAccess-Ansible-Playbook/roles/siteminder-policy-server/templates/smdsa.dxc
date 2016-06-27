@@ -1,0 +1,30 @@
+# size limits
+set max-users = 1000;
+set max-op-size = 4000;
+set multi-write-queue = 20000;
+
+# time limits
+set max-bind-time = none;
+set bind-idle-time = 3600;
+set max-op-time = 600;
+
+# size limits
+set credits = 5;
+set max-local-ops = 1000;
+
+##
+## TODO : place me in a separate file !
+##
+
+# Disable log rollover (when possible)
+set rollover-trace-log = false;
+set rollover-alarm-log = false;
+
+# More logs !
+set query-log-advanced = all;
+set update-log-show-values = true;
+set trace-log = "logs/$s_trace.log";
+set query-log = "logs/$s_query.log";
+set update-log = "logs/$s_update.log";
+set connect-log = "logs/$s_connect.log";
+set trace = query;

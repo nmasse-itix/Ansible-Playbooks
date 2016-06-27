@@ -1,0 +1,11 @@
+---
+
+  - name: Initialize the PKI
+    sudo: no
+    local_action: command creates={{ lookup('ENV', 'BASEDIR') }}/pki/ca/root_ca.crl {{ lookup('ENV', 'BASEDIR') }}/pki/init.sh
+    tags: certificate
+
+  - name: Generate a truststore
+    sudo: no
+    local_action: command creates={{ lookup('ENV', 'BASEDIR') }}/pki/truststore.jks keytool -importcert -noprompt -alias ca -keystore {{ lookup('ENV', 'BASEDIR') }}/pki/truststore.jks -storetype JKS -storepass {{ pki_truststore_password }} -file {{ lookup('ENV', 'BASEDIR') }}/pki/ca/root_ca.crt
+    tags: certificate

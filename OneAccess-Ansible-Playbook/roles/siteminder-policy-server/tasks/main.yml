@@ -1,0 +1,247 @@
+---
+  - name: This module only works on CentOS 6
+    assert:
+      that:
+        - "ansible_os_family == 'RedHat'"
+
+  - name: Create the 'smuser' user
+    user: name={{ sm_user }} comment="CA SiteMinder User" shell=/bin/ksh
+    tags: user
+
+  - name: Set SSH key for smuser
+    authorized_key: user={{ sm_user }} key="{{ ansible_ssh_public_key }}" manage_dir=yes
+    tags: user
+
+  - name: Set the required .profile for smuser
+    template: src=profile dest=/home/{{ sm_user }}/.profile
+    sudo_user: "{{ sm_user }}"
+    tags: user
+
+  - name: Copy the SiteMinder Policy Server files to sources_dir
+    unarchive: creates={{ sources_dir }}/ps-12.52-sp01-linux src=GEN08170134E-PolicyServerLinux.zip dest={{ sources_dir }}
+
+  - name: Copy the unattended installation response file
+    template: src=ca-ps-installer.properties dest={{ sources_dir }}/ca-ps-installer.properties
+
+  - name: Create the installation dir
+    file: path={{ sm_home }} owner={{ sm_user }} state=directory
+
+  - name: Install SiteMinder (warning, no check !)
+    command: creates={{ sm_home }}/siteminder {{ sources_dir }}/ps-12.52-sp01-linux/ca-ps-12.52-sp01-linux.bin -f {{ sources_dir }}/ca-ps-installer.properties -i silent
+    sudo_user: "{{ sm_user }}"
+    ignore_errors: yes
+
+  - name: Copy smreg
+    command: install {{ sources_dir }}/ps-12.52-sp01-linux/smreg {{ sm_home }}/siteminder/bin/smreg -m 755 -o {{ sm_user }}
+
+  - name: Create the SiteMinderPS DSA
+    command: creates={{ dx_home }}/dxserver/config/knowledge/SiteMinderPS.dxc /bin/sh -l -c "dxnewdsa SiteMinderPS {{ sm_policy_store_port }} 'ou=PS,o=SiteMinder'"
+    sudo_user: "{{ dx_user }}"
+
+  - name: Flag the SiteMinderPS DSA as "autostart"
+    file: path={{ dx_home }}/dxserver/config/autostart/SiteMinderPS state=touch
+    sudo_user: "{{ dx_user }}"
+
+  - name: Copy netegrity.dxc to the right place
+    command: creates={{ dx_home }}/dxserver/config/schema/netegrity.dxc install -m 644 -o {{ dx_user }} -g {{ dx_group }} {{ sm_home }}/siteminder/eTrust/netegrity.dxc {{ dx_home }}/dxserver/config/schema/netegrity.dxc
+
+  - name: Copy etrust.dxc to the right place
+    command: creates={{ dx_home }}/dxserver/config/schema/etrust.dxc install -m 644 -o {{ dx_user }} -g {{ dx_group }} {{ sm_home }}/siteminder/xps/db/etrust.dxc {{ dx_home }}/dxserver/config/schema/etrust.dxc
+
+  - name: Create the smdsa.dxg (custom schema)
+    template: dest={{ dx_home }}/dxserver/config/schema/smdsa.dxg src=smdsa.dxg owner={{ sm_user }} mode=0644
+    tags: config
+
+  - name: Enable the custom schema
+    lineinfile: dest={{ dx_home }}/dxserver/config/servers/SiteMinderPS.dxi state=present regexp='^source "../schema/[a-z]+.dxg";' line='source "../schema/smdsa.dxg";'
+    tags: config
+
+  - name: Set config 'ignore-name-bindings'
+    lineinfile: dest={{ dx_home }}/dxserver/config/servers/SiteMinderPS.dxi state=present insertafter="EOF" line='set ignore-name-bindings = true;'
+    tags: config
+
+  - name: Create the smdsa.dxc (custom limits)
+    template: dest={{ dx_home }}/dxserver/config/limits/smdsa.dxc src=smdsa.dxc owner={{ dx_user }} mode=0644
+    tags: config
+
+  - name: Bind SiteMinderPS DSA on 127.0.0.1 only
+    lineinfile: dest="{{ dx_home }}/dxserver/config/knowledge/SiteMinderPS.dxc" line='    bind-address = "127.0.0.1"' insertafter="^\s*address\s*=" regexp='^\s*bind-address\s*='
+    sudo_user: "{{ dx_user }}"
+    tags: config
+
+  - name: Bind SiteMinderPS DSA on 127.0.0.1 only
+    lineinfile: dest="{{ dx_home }}/dxserver/config/knowledge/SiteMinderPS.dxc" line='    address       = tcp "127.0.0.1" port \1' regexp='^\s*address\s*=\s*tcp\s*"[^"]*"\s*port\s*([0-9]+)' backrefs=yes
+    sudo_user: "{{ dx_user }}"
+    tags: config
+
+  - name: Enable the custom limits
+    lineinfile: dest={{ dx_home }}/dxserver/config/servers/SiteMinderPS.dxi state=present regexp='^source "../limits/[a-z]+.dxc";' line='source "../limits/smdsa.dxc";'
+    tags: config
+
+  - name: Copy the initial DSA to the sources dir
+    template: src=sm-ps.ldif dest={{ sources_dir }}/sm-ps.ldif
+
+  - name: Stop the SiteMinderPS DSA
+    command: /bin/sh -l -c "dxserver stop SiteMinderPS"
+    sudo_user: "{{ dx_user }}"
+
+  - name: Load the LDIF into the SiteMinderPS datastore
+    command: /bin/sh -l -c "dxloaddb SiteMinderPS {{ sources_dir }}/sm-ps.ldif"
+    sudo_user: "{{ dx_user }}"
+
+  - name: Start the SiteMinderPS DSA
+    command: /bin/sh -l -c "dxserver start SiteMinderPS"
+    sudo_user: "{{ dx_user }}"
+
+  - name: Register the SiteMinder Policy Store
+    command: /bin/ksh -l -c "smldapsetup reg -hlocalhost -p{{ sm_policy_store_port }} -dcn=DXAdmin,ou=PS,o=SiteMinder -wpassword -rou=PS,o=SiteMinder -v"
+    sudo_user: "{{ sm_user }}"
+
+  - name: Set the SiteMinder admin password
+    command: /bin/ksh -l -c "smreg -su {{ sm_admin_password }}"
+    sudo_user: "{{ sm_user }}"
+
+  - name: Run XPSDDInstall
+    command: chdir={{ sm_home }}/siteminder/xps/dd /bin/ksh -l -c "XPSDDInstall SmMaster.xdd"
+    sudo_user: "{{ sm_user }}"
+
+  - name: Run XPSImport
+    command: chdir={{ sm_home }}/siteminder/db /bin/ksh -l -c "XPSImport smpolicy.xml -npass"
+    sudo_user: "{{ sm_user }}"
+
+  - name: Disable the Healh Monitor
+    lineinfile: dest={{ sm_home }}/siteminder/config/siteminder.conf state=present regexp='^MONITOR_ENABLED=[a-zA-Z]+' line='MONITOR_ENABLED=no'
+    sudo_user: "{{ sm_user }}"
+    tags: config
+
+  - name: Make a copy of the SiteMinder registry
+    command: creates={{ sm_home }}/siteminder/registry/sm.registry.initial cp {{ sm_home }}/siteminder/registry/sm.registry {{ sm_home }}/siteminder/registry/sm.registry.initial
+    sudo_user: "{{ sm_user }}"
+
+  - name: Upload the patch file
+    copy: src=sm.registry.patch dest={{ sources_dir }}/sm.registry.patch
+
+  - name: Patch the SiteMinder registry
+    command: patch {{ sm_home }}/siteminder/registry/sm.registry {{ sources_dir }}/sm.registry.patch
+    sudo_user: "{{ sm_user }}"
+
+  - name: Create the SiteMinderSS DSA
+    command: creates={{ dx_home }}/dxserver/config/knowledge/SiteMinderSS.dxc /bin/sh -l -c "dxnewdsa SiteMinderSS {{ sm_session_store_port }} 'ou=SS,o=SiteMinder'"
+    sudo_user: "{{ dx_user }}"
+    when: sm_session_store_port is defined
+    tags: session-store
+
+  - name: Flag the SiteMinderSS DSA as "autostart"
+    file: path={{ dx_home }}/dxserver/config/autostart/SiteMinderSS state=touch
+    sudo_user: "{{ dx_user }}"
+    when: sm_session_store_port is defined
+    tags: session-store
+
+  - name: Enable the custom schema
+    lineinfile: dest={{ dx_home }}/dxserver/config/servers/SiteMinderSS.dxi state=present regexp='^source "../schema/[a-z]+.dxg";' line='source "../schema/smdsa.dxg";'
+    sudo_user: "{{ dx_user }}"
+    when: sm_session_store_port is defined
+    tags:
+      - config
+      - session-store
+
+  - name: Set config 'ignore-name-bindings'
+    lineinfile: dest={{ dx_home }}/dxserver/config/servers/SiteMinderSS.dxi state=present insertafter="EOF" line='set ignore-name-bindings = true;'
+    sudo_user: "{{ dx_user }}"
+    when: sm_session_store_port is defined
+    tags:
+      - config
+      - session-store
+
+  - name: Bind SiteMinderSS DSA on 127.0.0.1 only
+    lineinfile: dest="{{ dx_home }}/dxserver/config/knowledge/SiteMinderSS.dxc" line='    bind-address = "127.0.0.1"' insertafter="^\s*address\s*=" regexp='^\s*bind-address\s*='
+    sudo_user: "{{ dx_user }}"
+    when: sm_session_store_port is defined
+    tags:
+      - config
+      - session-store
+
+  - name: Bind SiteMinderSS DSA on 127.0.0.1 only
+    lineinfile: dest="{{ dx_home }}/dxserver/config/knowledge/SiteMinderSS.dxc" line='    address       = tcp "127.0.0.1" port \1' regexp='^\s*address\s*=\s*tcp\s*"[^"]*"\s*port\s*([0-9]+)' backrefs=yes
+    sudo_user: "{{ dx_user }}"
+    when: sm_session_store_port is defined
+    tags:
+      - config
+      - session-store
+
+  - name: Set "cache-index-all-except = smVariableValue,smsessionblob"
+    lineinfile: dest="{{ dx_home }}/dxserver/config/servers/SiteMinderSS.dxi" line='set cache-index-all-except = smVariableValue,smsessionblob;' regexp='^\s*set\s+cache-index-all-except\s*=\s*' insertbefore=EOF
+    sudo_user: "{{ dx_user }}"
+    when: sm_session_store_port is defined
+    tags:
+      - config
+      - session-store
+
+  - name: Set "lookup-cache = true"
+    lineinfile: dest="{{ dx_home }}/dxserver/config/servers/SiteMinderSS.dxi" line='set lookup-cache = true;' regexp='^\s*set\s+lookup-cache\s*=\s*' insertbefore=EOF
+    sudo_user: "{{ dx_user }}"
+    when: sm_session_store_port is defined
+    tags:
+      - config
+      - session-store
+
+  - name: Set "disable-transaction-log-flush = true"
+    lineinfile: dest="{{ dx_home }}/dxserver/config/servers/SiteMinderSS.dxi" line='set disable-transaction-log-flush = true;' regexp='^\s*set\s+disable-transaction-log-flush\s*=\s*' insertbefore=EOF
+    sudo_user: "{{ dx_user }}"
+    when: sm_session_store_port is defined
+    tags:
+      - config
+      - session-store
+
+  - name: Set "disable-transaction-log = true"
+    lineinfile: dest="{{ dx_home }}/dxserver/config/servers/SiteMinderSS.dxi" line='set disable-transaction-log = true;' regexp='^\s*set\s+disable-transaction-log\s*=\s*' insertbefore=EOF
+    sudo_user: "{{ dx_user }}"
+    when: sm_session_store_port is defined
+    tags:
+      - config
+      - session-store
+
+  - name: Enable the custom limits
+    lineinfile: dest={{ dx_home }}/dxserver/config/servers/SiteMinderSS.dxi state=present regexp='^source "../limits/[a-z]+.dxc";' line='source "../limits/smdsa.dxc";'
+    when: sm_session_store_port is defined
+    tags:
+      - config
+      - session-store
+
+  - name: Copy the initial DSA to the sources dir
+    template: src=sm-ss.ldif dest={{ sources_dir }}/sm-ss.ldif
+    when: sm_session_store_port is defined
+    tags: session-store
+
+  - name: Stop the SiteMinderPS DSA
+    command: /bin/sh -l -c "dxserver stop SiteMinderSS"
+    sudo_user: "{{ dx_user }}"
+    when: sm_session_store_port is defined
+    tags: session-store
+
+  - name: Load the LDIF into the SiteMinderSS datastore
+    command: /bin/sh -l -c "dxloaddb SiteMinderSS {{ sources_dir }}/sm-ss.ldif"
+    sudo_user: "{{ dx_user }}"
+    when: sm_session_store_port is defined
+    tags: session-store
+
+  - name: Start the SiteMinderSS DSA
+    command: /bin/sh -l -c "dxserver start SiteMinderSS"
+    sudo_user: "{{ dx_user }}"
+    when: sm_session_store_port is defined
+    tags: session-store
+
+  - name: Upload the patch file to register the Session Store
+    template: src=sm-ss.registry.patch dest={{ sources_dir }}/sm-ss.registry.patch
+    when: sm_session_store_port is defined
+    tags: session-store
+
+  - name: Patch the SiteMinder registry to register the Session Store
+    command: patch {{ sm_home }}/siteminder/registry/sm.registry {{ sources_dir }}/sm-ss.registry.patch
+    sudo_user: "{{ sm_user }}"
+    when: sm_session_store_port is defined
+    tags: session-store
+
+  - name: Start the SiteMinder Policy Server
+    command: /bin/ksh -l -c "start-ps"
+    sudo_user: "{{ sm_user }}"

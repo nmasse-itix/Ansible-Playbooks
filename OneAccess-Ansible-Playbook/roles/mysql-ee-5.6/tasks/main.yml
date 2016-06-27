@@ -1,0 +1,64 @@
+---
+
+  - name: This module only works on CentOS 6
+    assert:
+      that:
+        - "ansible_os_family == 'RedHat'"
+
+  - name: Install libaio
+    yum: name=libaio state=installed
+
+  - name: Be sure to remove any conflicting RPM before installing MySQL
+    yum: name=mysql-libs state=absent
+
+  - name: Copy the MySQL Enterprise Edition 5.6 installation package
+    copy: src={{ item }} dest={{ sources_dir }}/rpms
+    with_items: [ 'MySQL-server-advanced-{{ mysql_version }}-1.el6.i686.rpm', 'MySQL-shared-advanced-{{ mysql_version }}-1.el6.i686.rpm', 'MySQL-shared-compat-advanced-{{ mysql_version }}-1.el6.i686.rpm', 'MySQL-client-advanced-{{ mysql_version }}-1.el6.i686.rpm' ]
+    register: rpmsdir
+    when: ansible_architecture == 'i386'
+
+  - name: Copy the MySQL Enterprise Edition 5.6 installation package
+    copy: src={{ item }} dest={{ sources_dir }}/rpms
+    with_items: [ 'MySQL-server-advanced-{{ mysql_version }}-1.el6.x86_64.rpm', 'MySQL-shared-advanced-{{ mysql_version }}-1.el6.x86_64.rpm', 'MySQL-shared-compat-advanced-{{ mysql_version }}-1.el6.x86_64.rpm', 'MySQL-client-advanced-{{ mysql_version }}-1.el6.x86_64.rpm' ]
+    register: rpmsdir
+    when: ansible_architecture == 'x86_64'
+
+  - name: Update the RPM local repository
+    command: createrepo {{ sources_dir }}/rpms
+    when: rpmsdir.changed
+
+  - name: Flush the yum caches
+    command: yum clean all
+    when: rpmsdir.changed
+
+  - name: Set the default MySQL server configuration (yes, before installation)
+    template: src=my.cnf dest=/etc/my.cnf owner=root group=root mode=0755
+    tags: config
+
+  - name: Create the MySQL data directory
+    file: path=/home/mysql state=directory mode=777
+
+  - name: Install MySQL Enterprise Edition 5.6
+    yum: name={{ item }} state=installed
+    with_items: [ 'MySQL-server-advanced', 'MySQL-shared-advanced', 'MySQL-shared-compat-advanced', 'MySQL-client-advanced' ]
+
+  - name: Update the MySQL data directory
+    file: path=/home/mysql state=directory mode=0750 owner=mysql group=mysql
+
+  - name: Install the MySQL-python package (needed by ansible)
+    yum: name=MySQL-python state=installed
+
+  - name: Fix permissions on /var/lib/mysql
+    file: path=/var/lib/mysql state=directory mode=0750 owner=mysql group=mysql
+
+  - name: Ensure the MySQL service is started
+    service: name=mysql state=started enabled=on
+
+  - name: Copy the MySQL script to init the root password
+    template: src=mysql_set_root_password.sh dest={{ sources_dir }} mode=0755
+
+  - name: Reset the MySQL root password
+    command: "{{ sources_dir }}/mysql_set_root_password.sh"
+
+  - name: Remove the MySQL script
+    file: path={{ sources_dir }}/mysql_set_root_password.sh state=absent

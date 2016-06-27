@@ -1,0 +1,48 @@
+45a46
+> Enabled=              	                  0x1;	REG_DWORD
+53a55
+> Enabled=              	                    0;	REG_DWORD
+60a63
+> Enabled=              	                    0;	REG_DWORD
+174a178
+> Enabled=              	                  0x1;	REG_DWORD
+185a190
+> Enabled=              	                  0x1;	REG_DWORD
+210,211c215,216
+< RolloverOnStart=      	                  0x1;	REG_DWORD
+< RolloverSize=         	                  0xa;	REG_DWORD
+---
+> RolloverOnStart=      	                    0;	REG_DWORD
+> RolloverSize=         	                    0;	REG_DWORD
+227,228c232,233
+< TraceRolloverOnStart= 	                  0x1;	REG_DWORD
+< TraceRolloverSize=    	                  0xa;	REG_DWORD
+---
+> TraceRolloverOnStart= 	                    0;	REG_DWORD
+> TraceRolloverSize=    	                    0;	REG_DWORD
+244a250
+> KeyStoreProviderNamespace=	                LDAP:;	REG_SZ
+293,297c299,303
+< AffiliateFilter=      	                    0;	REG_DWORD
+< AnonymousAuthFilter=  	                    0;	REG_DWORD
+< AnonymousAzFilter=    	                    0;	REG_DWORD
+< AuthFilter=           	                    0;	REG_DWORD
+< AzFilter=             	                    0;	REG_DWORD
+---
+> AffiliateFilter=      	                  0x1;	REG_DWORD
+> AnonymousAuthFilter=  	                  0x1;	REG_DWORD
+> AnonymousAzFilter=    	                  0x1;	REG_DWORD
+> AuthFilter=           	                  0x1;	REG_DWORD
+> AzFilter=             	                  0x1;	REG_DWORD
+299a306
+> LogAccess=            	                  0x1;	REG_DWORD
+303,304c310,311
+< RolloverOnStart=      	                  0x1;	REG_DWORD
+< RolloverSize=         	                  0xa;	REG_DWORD
+---
+> RolloverOnStart=      	                    0;	REG_DWORD
+> RolloverSize=         	                    0;	REG_DWORD
+310c317
+< UserAdminFilter=      	                    0;	REG_DWORD
+---
+> UserAdminFilter=      	                  0x1;	REG_DWORD

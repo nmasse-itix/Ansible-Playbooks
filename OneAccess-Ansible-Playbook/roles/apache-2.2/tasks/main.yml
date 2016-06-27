@@ -1,0 +1,141 @@
+---
+
+  - name: This module only works on CentOS 6
+    assert:
+      that:
+        - "ansible_os_family == 'RedHat'"
+
+  - name: Create the 'httpd' user
+    user: name={{ httpd_user }} comment="WWW User"
+    tags: user
+
+  - name: Set SSH key for the 'httpd' user
+    authorized_key: user={{ httpd_user }} key="{{ ansible_ssh_public_key }}" manage_dir=yes
+    tags: user
+
+  - name: Install GCC
+    yum: name=gcc state=installed
+    tags: compile
+
+  - name: Install Lynx (used by the apache startup script)
+    yum: name=lynx state=installed
+
+  - name: Install the 64 bits version of glibc-devel
+    yum: name=glibc-devel.x86_64 state=latest
+    tags: compile
+
+  - name: Install the 32 bits version of glibc-devel
+    yum: name=glibc-devel.i686 state=latest
+    tags: compile
+
+  - name: Try to update the 64 bits version of openssl
+    yum: name=openssl.x86_64 state=latest
+    when: "ansible_architecture == 'x86_64'"
+    tags: compile
+
+  - name: Install the 32 bits version of openssl
+    yum: name=openssl.i686 state=installed
+    tags: compile
+
+  - name: Install the 32 bits version of openssl-devel
+    yum: name=openssl-devel.i686 state=installed
+    tags: compile
+
+  - name: Create the home dir for Apache
+    file: path={{ httpd_home }} state=directory
+    sudo_user: "{{ httpd_user }}"
+
+  - name: Create the sources dir for Apache
+    file: path={{ httpd_home }}/src state=directory
+    sudo_user: "{{ httpd_user }}"
+
+  - name: Unarchive the apache distribution
+    unarchive: creates={{ httpd_home }}/src/httpd-2.2.29 src=httpd-2.2.29.tar.gz dest={{ httpd_home }}/src
+    sudo_user: "{{ httpd_user }}"
+
+  - name: ./configure Apache
+    shell: chdir={{ httpd_home }}/src/httpd-2.2.29 LIBS=-lpthread ./configure CFLAGS="-m32" --enable-modules="proxy proxy-http proxy-connect headers rewrite ssl" --prefix={{ httpd_home }}
+    sudo_user: "{{ httpd_user }}"
+    tags: compile
+
+  - name: make && make install Apache
+    shell: chdir={{ httpd_home }}/src/httpd-2.2.29 LIBS=-lpthread make clean && make && make install
+    sudo_user: "{{ httpd_user }}"
+    tags: compile
+
+  - name: Disable the Apache default port
+    lineinfile: dest={{ httpd_home }}/conf/httpd.conf regexp="^Listen " state=absent
+    sudo_user: "{{ httpd_user }}"
+
+  - name: Install the headers CGI
+    template: src=headers dest={{ httpd_home }}/cgi-bin/headers mode=0755
+    sudo_user: "{{ httpd_user }}"
+    tags: www-content
+
+  - name: Install the helloworld CGI
+    template: src=helloworld dest={{ httpd_home }}/cgi-bin/helloworld mode=0755
+    sudo_user: "{{ httpd_user }}"
+    tags: www-content
+
+  - name: Install perl-CGI
+    yum: name=perl-CGI state=installed
+
+  - name: Install perl-libwww-perl
+    yum: name=perl-libwww-perl state=installed
+
+  - name: Install the custom.conf
+    template: src=custom.conf dest={{ httpd_home }}/conf/custom.conf mode=644
+    sudo_user: "{{ httpd_user }}"
+    tags:
+      - config
+      - new
+
+  - name: Source the custom.conf
+    lineinfile: dest={{ httpd_home }}/conf/httpd.conf line="Include {{ httpd_home }}/conf/custom.conf" insertafter="EOF" state=present
+    sudo_user: "{{ httpd_user }}"
+
+  - name: Create the static file structure
+    file: path={{ httpd_home }}/htdocs/{{ item }} state=directory
+    with_items: [ "static", "default", "intranet", "pki" ]
+    sudo_user: "{{ httpd_user }}"
+    tags: www-content
+
+  - name: Install the go-away web page
+    template: src=go-away.html dest={{ httpd_home }}/htdocs/default/index.html
+    sudo_user: "{{ httpd_user }}"
+    tags: www-content
+
+  - name: Run the Certificate Generation script (if requested)
+    local_action: command creates={{ lookup('ENV', 'BASEDIR') }}/roles/apache-2.2/files/server.crt {{ lookup('ENV', 'BASEDIR') }}/pki/gen_certs.sh
+    sudo: false
+    tags: certificate
+    environment:
+      CERT_CN: "{{ httpd_certificate_cn }}"
+      PASSWORD: "{{ httpd_certificate_password }}"
+      BASENAME: "server"
+      OUTDIR: "{{ lookup('ENV', 'BASEDIR') }}/roles/apache-2.2/files/"
+    tags: certificate
+    when: httpd_certificate_cn is defined
+
+  - name: Install the new certificate and private key
+    copy: src={{ item }} dest={{ httpd_home }}/conf/{{ item }}
+    sudo_user: "{{ httpd_user }}"
+    with_items: [ "server.key", "server.crt", "server-ca.crt" ]
+    tags: certificate
+
+  - name: Copy the PKI stuffs - CRL
+    copy: src={{ lookup('ENV', 'BASEDIR') }}/pki/ca/root_ca.crl dest={{ httpd_home }}/htdocs/pki/oneaccess_ca.crl
+    sudo_user: "{{ httpd_user }}"
+    tags: www-content
+
+  - name: Copy the PKI stuffs - RootCA
+    copy: src={{ lookup('ENV', 'BASEDIR') }}/pki/ca/root_ca.crt dest={{ httpd_home }}/htdocs/pki/oneaccess_ca.crt
+    sudo_user: "{{ httpd_user }}"
+    tags: www-content
+
+  - name: Copy the favicon.ico
+    copy: src=favicon.ico dest={{ httpd_home }}/htdocs/static/favicon.ico
+    sudo_user: "{{ httpd_user }}"
+    tags:
+      - www-content
+

@@ -1,0 +1,14 @@
+#!/usr/bin/perl --
+use strict;
+use warnings;
+use CGI;
+
+my $q = CGI->new;
+my %headers = map { $_ => $q->http($_) } $q->http();
+
+print $q->header('text/html');
+print "<html><body><pre>\n";
+for my $header ( keys %headers ) {
+    print "$header: $headers{$header}\n";
+}
+print "</pre></body></html>\n";

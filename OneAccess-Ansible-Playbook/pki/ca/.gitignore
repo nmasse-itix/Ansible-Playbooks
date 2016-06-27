@@ -1,0 +1,7 @@
+index.txt*
+crlnumber*
+newcerts
+serial*
+*.crl
+*.crt
+*.key

@@ -1,0 +1,54 @@
+#!/bin/bash
+
+# Set environment variables
+export ANSIBLE_CONFIG="./ansible.cfg"
+
+options=""
+target="$1"
+ssh_key="$HOME/.ssh/id_rsa"
+user="root"
+
+if [ -z "$target" ]; then
+  echo "No target specified. Please specify an inventory or 'bootstrap' !"
+  exit 1
+fi
+
+if [ "$target" == "bootstrap" -o "$target" == "bootstrap-minimal" ]; then
+  if [ -z "$2" ]; then
+    echo "Please specify the target host !"
+    exit 1
+  fi
+  host="$2"
+  echo "Starting $target..."
+  echo
+  echo -n "Please enter the initial $user password: "
+  read -s password
+  echo
+  echo
+  echo "Connecting to $host to register the SSH Host Key !"
+  sshpass -p "$password" ssh -i $ssh_key -o StrictHostKeyChecking=no "$user@$host" /bin/true
+  auth=""
+  if [ -n "$password" ]; then
+    auth="ansible_ssh_pass=$password"
+  else
+    auth="ansible_ssh_private_key_file=$ssh_key"
+  fi
+  echo -e "[$target]\n$2 ansible_ssh_user=$user $auth\n" > "./hosts-$target"
+else
+  shift
+  options="$@"
+fi
+
+if [ ! -f "./hosts-$target" ]; then
+  echo "Invalid target '$target' !"
+  exit 1
+fi
+
+# Export our base directory so that any script launched localy can refer to it
+BASEDIR="$(dirname $0)"
+BASEDIR="$(python -c 'import os.path; import sys; print os.path.abspath(sys.argv[1])' "$BASEDIR")"
+export BASEDIR
+
+ansible-playbook -i "./hosts-$target" $options site.yml
+
+rm -f hosts-bootstrap hosts-bootstrap-minimal # temporary file

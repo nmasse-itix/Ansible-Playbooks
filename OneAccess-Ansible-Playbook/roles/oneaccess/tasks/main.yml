@@ -1,0 +1,114 @@
+---
+
+  - name: This module only works on CentOS 6
+    assert:
+      that:
+        - "ansible_os_family == 'RedHat'"
+
+  - name: Create a oneaccess directory at the root filesystem
+    file: state=directory path=/oneaccess owner={{ tomcat_user }} group={{ tomcat_group }} mode=0755
+
+  - name: Create subdirectory beneath oneaccess
+    file: state=directory path=/oneaccess/{{ item }} owner={{ tomcat_user }} group={{ tomcat_group }} mode=0755
+    with_items: [ 'conf', 'logs' ]
+
+  - name: Install the One Access configuration file
+    template: src=personalization.properties dest=/oneaccess/conf/personalization.properties
+    tags: config
+
+  - name: Install the One Access configuration file
+    template: src=log4j.properties dest=/oneaccess/conf/log4j.properties
+    tags: config
+
+  - name: Create the One Access database
+    mysql_db: login_user=root login_password={{ mysql_root_password }} name={{ oneaccess_db_name }} state=present
+
+  - name: Create the One Access database user
+    mysql_user: login_user=root login_password={{ mysql_root_password }} name={{ oneaccess_db_username }} password={{ oneaccess_db_password }} priv="{{ oneaccess_db_name }}.*:ALL" state=present
+
+  - name: Copy the database schema to the sources directory
+    copy: src=Personalization_V1-0_BASE.ddl dest={{ sources_dir }}/Personalization_V1-0_BASE.ddl
+
+  - name: Import the database schema
+    mysql_db: login_user=root login_password={{ mysql_root_password }} name={{ oneaccess_db_name }} state=import target={{ sources_dir }}/Personalization_V1-0_BASE.ddl
+    tags:
+      - db
+      - db-schema
+#  - name: Copy the database initial data to the sources directory
+#    copy: src=InitialDataLoad.sql dest={{ sources_dir }}/InitialDataLoad.sql
+
+#  - name: Import the database initial data
+#    mysql_db: login_user=root login_password={{ mysql_root_password }} name={{ oneaccess_db_name }} state=import target={{ sources_dir }}/InitialDataLoad.sql
+
+  - name: Copy the WAR file to tomcat
+    copy: src=oneaccess.war dest={{ tomcat_home }}/webapps/oneaccess.war
+
+  - name: Create a "tiles" directory under "htdocs/static"
+    file: path="{{ httpd_home }}/htdocs/static/tiles/" state=directory owner={{ httpd_user }} group={{ httpd_group }} mode=755
+
+  - name: Copy the static files
+    unarchive: src=circles.tgz dest="{{ httpd_home }}/htdocs/static/tiles/"
+    sudo_user: "{{ httpd_user }}"
+
+  - name: Ugly search & replace in the javascript code
+    replace: regexp="https://msso.ca.com/userinfo.php" replace="/userinfo" backup=yes dest={{ tomcat_home }}/webapps/oneaccess/resources/100/scripts/scripts.js
+    sudo_user: "{{ tomcat_user }}"
+    tags: ugly
+
+  - name: Ugly search & replace in the javascript code
+    replace: regexp='[,]secret:"[^"]+"' replace="" backup=no dest={{ tomcat_home }}/webapps/oneaccess/resources/100/scripts/scripts.js
+    sudo_user: "{{ tomcat_user }}"
+    tags: ugly
+
+  - name: Generate certificates for SFDC
+    local_action: command creates="{{ lookup('env', 'BASEDIR') }}/roles/oneaccess/files/salesforce.jks" "{{ lookup('env', 'BASEDIR') }}/pki/new_selfsigned_cert.sh"
+    sudo: false
+    environment:
+      CERT_CN: "{{ salesforce_certificate_cn }}"
+      PASSWORD: "{{ salesforce_certificate_password }}"
+      BASENAME: "salesforce"
+      OUTDIR: "{{ lookup('ENV', 'BASEDIR') }}/roles/oneaccess/files/"
+    tags: certificate
+    when: salesforce_certificate_cn is defined
+
+  - name: Generate certificates for SiteMinder
+    local_action: command creates="{{ lookup('env', 'BASEDIR') }}/roles/oneaccess/files/siteminder.jks" "{{ lookup('env', 'BASEDIR') }}/pki/new_selfsigned_cert.sh"
+    sudo: false
+    environment:
+      CERT_CN: "{{ siteminder_certificate_cn }}"
+      PASSWORD: "{{ siteminder_certificate_password }}"
+      BASENAME: "siteminder"
+      OUTDIR: "{{ lookup('ENV', 'BASEDIR') }}/roles/oneaccess/files/"
+    tags: certificate
+    when: siteminder_certificate_cn is defined
+
+  - name: Generate a SAML Signing certificate for Layer7
+    local_action: command creates="{{ lookup('env', 'BASEDIR') }}/roles/oneaccess/files/layer7.jks" "{{ lookup('env', 'BASEDIR') }}/pki/new_selfsigned_cert.sh"
+    sudo: false
+    environment:
+      CERT_CN: "{{ layer7_saml_certificate_cn }}"
+      PASSWORD: "{{ layer7_saml_certificate_password }}"
+      BASENAME: "layer7"
+      OUTDIR: "{{ lookup('ENV', 'BASEDIR') }}/roles/oneaccess/files/"
+    tags: certificate
+    when: layer7_saml_certificate_cn is defined
+
+  - name: Copy the Customer Logo
+    copy: src=CHANGEME-customer-logo.png dest={{ tomcat_home }}/webapps/oneaccess/resources/100/images/CHANGEME-customer-logo.png
+    sudo_user: "{{ tomcat_user }}"
+    tags: new
+
+  - name: Customize the OneAccess header
+    template: src=header.html dest={{ tomcat_home }}/webapps/oneaccess/resources/100/views/header.html
+    sudo_user: "{{ tomcat_user }}"
+    tags: new
+
+  - name: Source our custom.css
+    lineinfile: dest={{ tomcat_home }}/webapps/oneaccess/resources/100/styles/main.css backup=yes line='@charset "UTF-8";@import url("custom.css");\2' regexp='^@charset "UTF-8";(@import url\("custom.css"\);)?(.*)$' backrefs=yes state=present
+    sudo_user: "{{ tomcat_user }}"
+    tags: new
+
+  - name: Create our custom.css
+    template: src=custom.css dest={{ tomcat_home }}/webapps/oneaccess/resources/100/styles/custom.css
+    sudo_user: "{{ tomcat_user }}"
+    tags: new

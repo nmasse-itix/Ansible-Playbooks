@@ -1,0 +1,27 @@
+---
+
+  - name: Export the MySQL databases
+    mysql_db: state=dump name="{{ item }}" target="/tmp/{{ item }}.sql.bz2" login_password="{{ mysql_root_password }}" login_user=root
+    with_items: [ "{{ ssg_db_name }}", "{{ ssg_otk_db_name }}", "{{ oneaccess_db_name }}" ]
+    tags: backup
+
+  - name: Dump all DSA
+    command: /bin/sh -l -c 'dxserver stop {{ item }} && dxdumpdb -f /tmp/{{ item }}.ldif {{ item }}; rc="$?"; dxserver start {{ item }}; exit "$rc"'
+    sudo_user: "{{ dx_user }}"
+    with_items: [ "ACMEUsers", "SiteMinderPS", "SiteMinderSS" ]
+    tags: backup
+
+  - name: Compress ldif files
+    command: bzip2 -f /tmp/{{ item }}.ldif
+    with_items: [ "ACMEUsers", "SiteMinderPS", "SiteMinderSS" ]
+    tags: backup
+
+  - name: Retrieve backups
+    fetch: src=/tmp/{{ item }} flat=yes dest={{ lookup('env', 'BASEDIR') + "/backup/" + ansible_date_time.date }}/ fail_on_missing=yes
+    with_items: [ "{{ ssg_db_name }}.sql.bz2", "{{ ssg_otk_db_name }}.sql.bz2", "{{ oneaccess_db_name }}.sql.bz2", "ACMEUsers.ldif.bz2", "SiteMinderPS.ldif.bz2", "SiteMinderSS.ldif.bz2" ]
+    tags: backup
+
+  - name: Remove temporary files
+    file: path="/tmp/{{ item }}" state=absent
+    with_items: [ "{{ ssg_db_name }}.sql.bz2", "{{ ssg_otk_db_name }}.sql.bz2", "{{ oneaccess_db_name }}.sql.bz2", "ACMEUsers.ldif.bz2", "SiteMinderPS.ldif.bz2", "SiteMinderSS.ldif.bz2" ]
+    tags: backup
