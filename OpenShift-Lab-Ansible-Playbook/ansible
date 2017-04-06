@@ -1,0 +1,75 @@
+#!/bin/bash
+
+options=""
+ssh_key="$HOME/.ssh/id_rsa"
+user="root"
+inventory="lab"
+
+# Export our base directory so that any script launched localy can refer to it
+BASEDIR="$(dirname $0)"
+BASEDIR="$(python -c 'import os.path; import sys; print os.path.abspath(sys.argv[1])' "$BASEDIR")"
+export BASEDIR
+
+target="$1"
+shift
+case "$target" in
+  "")
+    echo "No target specified. Please specify an inventory or 'bootstrap' !"
+    exit 1
+  ;;
+
+  "bootstrap")
+    if [ -z "$1" ]; then
+      echo "Please specify the target host !"
+      exit 1
+    fi
+    echo "Bootstraping $@..."
+    echo
+    echo -n "Please enter the initial $user password: "
+    read -s password
+    echo
+    if [ -z "$RHN_LOGIN" ]; then
+      echo -n "Please enter your RHN login: "
+      read rhn_login
+      export RHN_LOGIN="$rhn_login"
+    fi
+    if [ -z "$RHN_PASSWORD" ]; then
+      echo -n "Please enter your RHN password: "
+      read -s rhn_password
+      export RHN_PASSWORD="$rhn_password"
+    fi
+    echo
+    echo
+    for host; do
+      echo "Connecting to $host to register the SSH Host Key !"
+      LC_ALL=C sshpass -p "$password" ssh -i $ssh_key -o StrictHostKeyChecking=no "$user@$host" /bin/true
+    done
+    auth=""
+    if [ -n "$password" ]; then
+      auth="ansible_ssh_pass=$password"
+    else
+      auth="ansible_ssh_private_key_file=$ssh_key"
+    fi
+    echo "[$target]" > "./hosts-$target"
+    for host; do
+      echo -e "$host ansible_ssh_user=$user $auth"
+    done >> "./hosts-$target"
+
+    ansible-playbook -i "./hosts-$target" $options site.yml
+
+    rm -f "./hosts-$target"
+  ;;
+  "play")
+    ansible-playbook -i "./hosts-$inventory" $options "$@" site.yml
+  ;;
+  "run")
+    group="$1"
+    cmd="$2"
+
+    ansible "$group" -i "./hosts-$inventory" -a "$cmd"
+  ;;
+  *)
+    echo "Usage: $0 {bootstrap|run} [options]"
+    exit 1
+  ;;
+esac

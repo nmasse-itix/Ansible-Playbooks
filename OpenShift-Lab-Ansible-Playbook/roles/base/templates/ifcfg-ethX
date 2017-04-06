@@ -1,0 +1,15 @@
+DEVICE={{ item }}
+TYPE=Ethernet
+ONBOOT=yes
+BOOTPROTO=dhcp
+USERCTL=no
+PEERDNS=yes
+IPV6INIT=no
+DHCP_HOSTNAME={{ shortname }}
+
+## Static configuration sample.
+## Gateway to be configured in /etc/sysconfig/network.
+##
+# BOOTPROTO=static
+# IPADDR=192.168.38.179
+# NETMASK=255.255.255.0

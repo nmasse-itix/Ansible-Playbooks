@@ -1,0 +1,94 @@
+---
+  - name: This module has only been tested on RHEL 7.3 x64
+    assert:
+      that:
+        - "ansible_userspace_bits == '64'"
+        - "ansible_os_family == 'RedHat'"
+        - "ansible_distribution_version == '7.3'"
+
+  - name: Tell SSHD not to use DNS
+    lineinfile: dest=/etc/ssh/sshd_config regexp="^#* *UseDNS +" line="UseDNS no"
+    notify: restart sshd
+    tags: config
+
+  - name: Tell SSHD to forbid root accesses
+    lineinfile: dest=/etc/ssh/sshd_config regexp="^#* *PermitRootLogin +" line="PermitRootLogin no"
+    notify: restart sshd
+    tags: config
+
+  - name: Tell SSHD to forbid password accesses
+    lineinfile: dest=/etc/ssh/sshd_config regexp="^#* *PasswordAuthentication +" line="PasswordAuthentication no"
+    notify: restart sshd
+    tags: config
+
+  - name: Install VIM
+    yum: name=vim-enhanced state=installed
+
+  - name: Install Open-VM tools
+    yum: name=open-vm-tools state=installed
+
+  - name: Install Screen
+    yum: name=screen state=installed
+
+  - name: Install unzip
+    yum: name=unzip state=installed
+
+  - name: Install tcpdump
+    yum: name=tcpdump state=installed
+
+  - name: Install telnet
+    yum: name=telnet state=installed
+
+  - name: Install strace
+    yum: name=strace state=installed
+
+  - name: Install man-pages
+    yum: name=man-pages state=installed
+
+  - name: Install man
+    yum: name=man state=installed
+
+  - name: Install iptraf
+    yum: name=iptraf state=installed
+
+  - name: Install wget
+    yum: name=wget state=installed
+
+  - name: Fix /etc/environment to include PATH
+    lineinfile: dest=/etc/environment regexp="^PATH=" line="PATH=/bin:/usr/bin:/sbin:/usr/sbin"
+    tags: config
+
+  - name: Persist the hostname
+    lineinfile: dest=/etc/sysconfig/network regexp="^HOSTNAME=" line="HOSTNAME={{ inventory_hostname_short }}"
+    notify: update hostname
+    tags:
+      - config
+      - dns
+
+  - name: Set the hostname
+    command: hostnamectl set-hostname {{ inventory_hostname_short }} --static
+    tags:
+      - config
+      - dns
+
+  - name: Edit /etc/hosts
+    template: src=etc_hosts dest=/etc/hosts owner=root group=root mode=0644
+    tags:
+      - config
+      - dns
+
+  - name: Ensure consistent locale across systems (1/2)
+    lineinfile: dest=/etc/locale.conf regexp="^LANG=" line="LANG=en_US.utf8"
+
+  - name: Ensure consistent locale across systems (2/2)
+    lineinfile: dest=/etc/locale.conf line="LC_CTYPE=en_US.utf8"
+
+  - name: Install the OpenSSH clients
+    yum: name=openssh-clients state=installed
+
+  - name: Install the custom banner script
+    template: src=rc.local dest=/usr/local/etc/rc.local mode=0755
+    tags: config
+
+  - name: Run the custom banner script at startup
+    lineinfile: dest=/etc/rc.d/rc.local line="/usr/local/etc/rc.local" state=present insertafter=EOF

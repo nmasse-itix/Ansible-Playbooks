@@ -1,0 +1,3 @@
+---
+  openshift_cluster_dns: app.openshift.test
+  dns_suffix: openshift.test

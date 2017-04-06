@@ -1,0 +1,67 @@
+---
+
+  - name: This module has only been tested on RHEL 7.3 x64
+    assert:
+      that:
+        - "ansible_userspace_bits == '64'"
+        - "ansible_os_family == 'RedHat'"
+        - "ansible_distribution_version == '7.3'"
+
+  - name: Install wget
+    yum: name=wget state=installed
+    tags: rpm
+
+  - name: Install bridge-utils
+    yum: name=bridge-utils state=installed
+    tags: rpm
+
+  - name: Install bash-completion
+    yum: name=bash-completion state=installed
+    tags: rpm
+
+  - name: Install GIT
+    yum: name=git state=installed
+    tags: rpm
+
+  - name: Install net-tools
+    yum: name=net-tools state=installed
+    tags: rpm
+
+  - name: Install bind-utils
+    yum: name=bind-utils state=installed
+    tags: rpm
+
+  - name: Install iptables-services
+    yum: name=iptables-services state=installed
+    tags: rpm
+
+  - name: Disable firewalld
+    service: name=firewalld state=stopped enabled=no
+
+  - name: Enable iptables
+    service: name=iptables state=started enabled=yes
+
+  - name: Check for existing SSH Private Key on the admin server
+    stat: path=/home/{{ ansible_ssh_user }}/.ssh/id_rsa
+    register: key
+    when: "'admin' in group_names" # Only on admin server
+    tags: ssh-key
+
+  - name: Generate an SSH Private Key on the admin server
+    command: ssh-keygen -t rsa -b 2048 -f /home/{{ ansible_ssh_user }}/.ssh/id_rsa -q -N ''
+    become_user: "{{ ansible_ssh_user }}"
+    when: "'admin' in group_names and key.stat.exists == False" # Only on admin server and if key does not exists
+    tags: ssh-key
+
+  - name: Fetch the SSH Public Key of the admin server
+    fetch: src=/home/{{ ansible_ssh_user }}/.ssh/id_rsa.pub dest="{{ basedir }}/admin.pub" flat=yes
+    when: "'admin' in group_names" # Only on admin server
+    tags: ssh-key
+
+  - name: Add SSH Public key of the admin server to the authorized_keys of each other server
+    authorized_key:
+      key: "{{ lookup('file', basedir + '/admin.pub' ) }}"
+      user: "{{ ansible_ssh_user }}"
+      state: present
+    when: "'admin' not in group_names" # Only on other servers
+    tags: ssh-key

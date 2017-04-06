@@ -1,0 +1,34 @@
+---
+
+  - name: Make sure optional repo is enabled
+    command: subscription-manager repos --enable rhel-7-server-optional-rpms
+    tags: rpm
+
+  - name: Make sure extras repo is enabled
+    command: subscription-manager repos --enable rhel-7-server-extras-rpms
+    tags: rpm
+
+  - name: Install Docker
+    yum: name=docker state=installed
+    tags: rpm
+
+  - name: Enable insecure registries
+    lineinfile: state=present dest=/etc/sysconfig/docker regexp="^INSECURE_REGISTRY=" line="INSECURE_REGISTRY='--insecure-registry 172.30.0.0/16'" insertafter="^# INSECURE_REGISTRY="
+
+  - name: Check if sdb is empty
+    command: sfdisk -d /dev/sdb
+    register: sfdisk
+    failed_when: sfdisk.stdout != "" or sfdisk.stderr != "" # sdb is empty
+    tags: storage
+
+  - name: Configure docker-storage-setup
+    template: dest=/etc/sysconfig/docker-storage-setup src=docker-storage-setup
+    tags: storage
+
+  - name: Run docker-storage-setup
+    command: docker-storage-setup
+    tags: storage
+
+  - name: Start Docker
+    service: name=docker state=started enabled=yes
+    tags: wip

@@ -1,0 +1,4 @@
+STORAGE_DRIVER=devicemapper
+CONTAINER_THINPOOL=docker-lv1
+DEVS=/dev/sdb
+VG=docker

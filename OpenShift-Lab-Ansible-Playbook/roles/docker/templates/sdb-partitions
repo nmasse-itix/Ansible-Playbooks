@@ -1,0 +1,7 @@
+label: dos
+unit: sectors
+
+start=     2048, size= 41940992, Id=8e
+start=        0, size=        0, Id= 0
+start=        0, size=        0, Id= 0
+start=        0, size=        0, Id= 0

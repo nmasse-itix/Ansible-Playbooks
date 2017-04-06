@@ -1,0 +1,17 @@
+[lab]
+master1.openshift.test
+nodeinfra1.openshift.test
+node1.openshift.test
+node2.openshift.test
+admin.openshift.test
+
+[admin]
+admin.openshift.test
+
+[nodes]
+nodeinfra1.openshift.test onlyforinfra=1
+node1.openshift.test
+node2.openshift.test
+
+[masters]
+master1.openshift.test

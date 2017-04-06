@@ -1,0 +1,32 @@
+---
+
+ - name: Bootstrap one or more RHEL7 nodes
+   hosts: bootstrap
+   become: no
+   roles:
+    - bootstrap
+    - register-rhn
+
+ - name: Install the required package for an OpenShift Lab
+   hosts: lab
+   become: yes
+   vars:
+    - basedir: "{{ lookup('env', 'BASEDIR') }}"
+   roles:
+#    - base
+#    - openshift-prereq
+     - name-resolution
+
+ - name: Install Docker
+   hosts:
+     - nodes
+     - masters
+   become: yes
+   roles:
+#    - docker
+
+ - name: Install the admin node
+   hosts: admin
+   become: yes
+   roles:
+  #   - nfs
