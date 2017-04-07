@@ -1,59 +1,7 @@
 ---
 
-  # install atomic-openshift-utils
-  # run atomic-openshift-installer install
-  # check answer file in ~/.config/openshift/installer.cfg.yml
+  - name: Fill-in the ansible inventory file on the admin server
+    template: src=ansible-hosts dest=/etc/ansible/hosts
 
-# oc label node master1.example.com region="infra" zone="na"
-# oc label node infranode1.example.com region="infra" zone="infranodes"
-# oc label node node1.example.com region="primary" zone="east"
-# oc label node node2.example.com region="primary" zone="west"
-
-#oadm registry --config=/etc/origin/master/admin.kubeconfig \
-#    --service-account=registry \
-#    --selector='region=infra'
-# --mount-host=<path>
-
-# deploy openshift3/ose-haproxy-router
-
-#oc create|delete -f \
-#    examples/image-streams/image-streams-rhel7.json \
-#    -n openshift
-
-#oc create|delete -f \
-#    examples/xpaas-streams/jboss-image-streams.json
-#    -n openshift
-
-#oc create -f \
-#    examples/db-templates -n openshift
-
-#oc create|delete -f \
-#    examples/quickstart-templates -n openshift
-
-{
-  "apiVersion": "v1",
-  "kind": "PersistentVolume",
-  "metadata": {
-    "name": "pv0001"
-  },
-  "spec": {
-    "capacity": {
-        "storage": "5Gi"
-    },
-    "accessModes": [ "ReadWriteOnce" ],
-    "nfs": {
-        "path": "/tmp",
-        "server": "172.17.0.2"
-    },
-    "persistentVolumeReclaimPolicy": "Recycle"
-  }
-}
-
-# setsebool -P virt_use_nfs 1
-
-# /example_fs *(rw,all_squash) (in /etc/exports)
-
-# chown -R nfsnobody:nfsnobody /example_fs
-# chmod 777
-
-# see https://github.com/openshift/openshift-ansible/tree/master/roles/kube_nfs_volumes
+  - name: Run the OpenShift installation playbook
+    fail: msg="run 'ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml' on the admin node"

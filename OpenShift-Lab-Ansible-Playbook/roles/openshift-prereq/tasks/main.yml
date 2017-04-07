@@ -7,20 +7,45 @@
         - "ansible_os_family == 'RedHat'"
         - "ansible_distribution_version == '7.3'"
 
+  - name: First, disable any repos (using subscription-manager)
+    command: subscription-manager repos --disable="*"
+    tags: rpm
+
+  - name: Make sure mandatory repos are enabled
+    command: subscription-manager repos --enable {{ item }}
+    with_items:
+      - rhel-7-server-rpms
+      - rhel-7-server-optional-rpms
+      - rhel-7-server-extras-rpms
+      - rhel-7-server-ose-{{ openshift_version }}-rpms
+    tags: rpm
+
   - name: Install wget
     yum: name=wget state=installed
+    when: "'admin' in group_names" # Only on admin server
     tags: rpm
 
   - name: Install bridge-utils
     yum: name=bridge-utils state=installed
+    when: "'admin' in group_names" # Only on admin server
+    tags: rpm
+
+  - name: Install nfs-utils
+    yum: name=nfs-utils state=installed
     tags: rpm
 
   - name: Install bash-completion
     yum: name=bash-completion state=installed
+    when: "'admin' in group_names or 'masters' in group_names" # Only on admin or master server
+    tags: rpm
+
+  - name: Install NetworkManager
+    yum: name=NetworkManager state=installed
     tags: rpm
 
   - name: Install GIT
     yum: name=git state=installed
+    when: "'admin' in group_names" # Only on admin server
     tags: rpm
 
   - name: Install net-tools
@@ -58,10 +83,21 @@
     when: "'admin' in group_names" # Only on admin server
     tags: ssh-key
 
-  - name: Add SSH Public key of the admin server to the authorized_keys of each other server
+  - name: Add SSH Public key of the admin server to the authorized_keys of each server (including the admin server)
     authorized_key:
       key: "{{ lookup('file', basedir + '/admin.pub' ) }}"
       user: "{{ ansible_ssh_user }}"
       state: present
-    when: "'admin' not in group_names" # Only on other servers
     tags: ssh-key
+
+  - name: pre-authorize all ssh keys of the other machines
+    command: ssh -o StrictHostKeyChecking=no {{ item }} /bin/true
+    become: no # need to run the ssh command as user "redhat"
+    with_items: "{{ groups['lab'] }}"
+    when: "'admin' in group_names" # Only on admin server
+    tags: ssh-key
+
+  - name: Install atomic-openshift-utils (only on the admin node)
+    yum: name=atomic-openshift-utils state=installed
+    when: "'admin' in group_names" # Only on admin server
+    tags: rpm

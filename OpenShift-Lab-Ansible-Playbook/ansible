@@ -38,6 +38,11 @@ case "$target" in
       read -s rhn_password
       export RHN_PASSWORD="$rhn_password"
     fi
+    if [ -z "$RHN_POOLID" ]; then
+      echo -n "Please enter your RHN Pool ID: "
+      read rhn_poolid
+      export RHN_POOLID="$rhn_poolid"
+    fi
     echo
     echo
     for host; do

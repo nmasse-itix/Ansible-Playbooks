@@ -1,0 +1,36 @@
+---
+
+  - name: Make sure infra pods runs in the infra region
+    become: no
+    command: oc annotate namespace default openshift.io/node-selector='region=infra' --overwrite
+
+  - name: Make sure the httpd-tools package is installed (we need htpasswd)
+    yum: name=httpd-tools state=installed
+
+  - name: Create a few test users
+    command: htpasswd -b /etc/origin/master/htpasswd {{ item.login }} {{ item.password }}
+    with_items:
+      - { login: andrew, password: andrew }
+      - { login: marina, password: marina }
+
+  - name: Recreate the default router certificate
+    command: oadm ca create-server-cert --signer-cert=/etc/origin/master/ca.crt --signer-key=/etc/origin/master/ca.key --signer-serial=/etc/origin/master/ca.serial.txt --hostnames='*.{{ openshift_cluster_dns }}' --cert=/home/{{ ansible_ssh_user }}/cloudapps.crt --key=/home/{{ ansible_ssh_user }}/cloudapps.key
+
+  - name: Build the certificate + key bundle
+    shell: cat /home/{{ ansible_ssh_user }}/cloudapps.crt /home/{{ ansible_ssh_user }}/cloudapps.key /etc/origin/master/ca.crt > /home/{{ ansible_ssh_user }}/cloudapps.pem
+
+  - name: Destroy the existing router
+    command: oc delete dc/router svc/router
+    become: no
+
+  - name: Deploy the new router
+    command: oadm router customrouter --replicas=1 --default-cert=/home/{{ ansible_ssh_user }}/cloudapps.pem --service-account=router --stats-password='{{ router_stats_password }}'
+    become: no
+
+  - name: Ship the PV creation script
+    template: src=create-pv.sh dest=/home/{{ ansible_ssh_user }}/create-pv.sh mode=0755
+    become: no
+
+  - name: Run the PV creation script
+    command: /home/{{ ansible_ssh_user }}/create-pv.sh
+    become: no

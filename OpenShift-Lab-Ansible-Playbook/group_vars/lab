@@ -1,3 +1,5 @@
 ---
   openshift_cluster_dns: app.openshift.test
   dns_suffix: openshift.test
+  openshift_version: 3.4
+  router_stats_password: redhat

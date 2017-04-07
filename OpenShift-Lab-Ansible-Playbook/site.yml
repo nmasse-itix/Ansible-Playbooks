@@ -13,20 +13,10 @@
    vars:
     - basedir: "{{ lookup('env', 'BASEDIR') }}"
    roles:
-#    - base
-#    - openshift-prereq
-     - name-resolution
-
- - name: Install Docker
-   hosts:
-     - nodes
-     - masters
-   become: yes
-   roles:
-#    - docker
-
- - name: Install the admin node
-   hosts: admin
-   become: yes
-   roles:
-  #   - nfs
+    - { role: base }
+    - { role: openshift-prereq }
+    - { role: name-resolution }
+    - { role: docker, when: "'admin' not in group_names" }
+    - { role: nfs, when: "'admin' in group_names" }
+    - { role: openshift-install, when: "'admin' in group_names" }
+    - { role: openshift-postinstall, when: "'masters' in group_names" }

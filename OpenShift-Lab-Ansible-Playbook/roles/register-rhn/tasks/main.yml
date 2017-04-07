@@ -13,6 +13,11 @@
       autosubscribe: false
     tags: rhn
 
+#
+# To know which Pool ID you can use, run the following command on a registered host :
+#
+#   sudo subscription-manager list --available --matches '*OpenShift*'
+#
   - name: Attach the correct pool id to the new subscription
-    command: subscription-manager attach --pool=8a85f98159c85ca00159c9ad5a823661 # Red Hat Enterprise Linux Developer Suite
+    command: subscription-manager attach --pool={{ lookup('env','RHN_POOLID') }}
     tags: rhn
