@@ -1,5 +1,0 @@
-[localrepo]
-name=Demo Local Repository
-baseurl=file://{{ sources_dir }}/rpms
-enabled=1
-gpgcheck=0

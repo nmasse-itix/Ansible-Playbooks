@@ -1,7 +1,0 @@
----
-
-  - name: Fill-in the ansible inventory file on the admin server
-    template: src=ansible-hosts dest=/etc/ansible/hosts
-
-  - name: Run the OpenShift installation playbook
-    fail: msg="run 'ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml' on the admin node"
